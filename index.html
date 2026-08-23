@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mamu Maru — ສູດ, ສະຕັອກ ແລະ ການສັ່ງຊື້</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700&family=Noto+Sans+Thai:wght@400;600&family=Outfit:wght@300;400;600;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#16110D; --panel:#221A14; --panel2:#2C221A; --line:#3A2D22;
+  --ink:#F4EADD; --mute:#A99282; --gold:#E8B04B; --tea:#C77B3E;
+  --ok:#4FB0A5; --bad:#E05B4A; --warn:#E8B04B;
+  --r:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Noto Sans Lao','Noto Sans Thai','Outfit',system-ui,sans-serif;font-size:14px;line-height:1.55}
+h1,h2,h3{font-weight:700;letter-spacing:0;margin:0}
+a{color:var(--gold)}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#1D1610,#16110D);
+  border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px}
+.logo .cup{width:30px;height:30px;border-radius:9px;background:linear-gradient(160deg,var(--gold),var(--tea));
+  display:grid;place-items:center;font-size:16px}
+.logo b{font-size:17px}
+.ver{font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:20px;padding:2px 8px}
+.spacer{flex:1}
+.sync{font-size:12px;color:var(--mute)}
+.sync.ok{color:var(--ok)} .sync.err{color:var(--bad)}
+
+/* nav */
+.nav{display:flex;gap:6px;padding:10px 16px 0;flex-wrap:wrap;border-bottom:1px solid var(--line);
+  background:var(--bg);position:sticky;top:51px;z-index:40}
+.nav button{background:none;border:none;color:var(--mute);font:inherit;font-weight:600;padding:9px 13px;
+  border-radius:10px 10px 0 0;cursor:pointer}
+.nav button.on{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-bottom-color:var(--panel)}
+
+.wrap{padding:16px;max-width:1500px;margin:0 auto}
+.page{display:none} .page.on{display:block}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.card h3{font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.hint{color:var(--mute);font-size:12px;line-height:1.5}
+
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.kpi .l{font-size:11px;color:var(--mute)}
+.kpi .v{font-size:22px;font-weight:800;margin-top:4px}
+.kpi .s{font-size:11px;color:var(--mute);margin-top:2px}
+.kpi.good .v{color:var(--ok)} .kpi.bad .v{color:var(--bad)} .kpi.gold .v{color:var(--gold)}
+
+input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  border-radius:9px;padding:7px 9px;font:inherit;font-size:13px;outline:none}
+input:focus,select:focus{border-color:var(--gold)}
+input[type=number]{text-align:right;font-family:'IBM Plex Mono',monospace}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--mute)}
+button.btn{background:var(--gold);color:#241704;border:none;border-radius:9px;padding:8px 14px;font:inherit;
+  font-weight:700;cursor:pointer}
+button.btn:hover{filter:brightness(1.08)}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.sm{padding:5px 9px;font-size:12px}
+button.danger{background:var(--bad);color:#fff}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;color:var(--mute);
+  padding:8px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04)}
+tbody tr:hover{background:rgba(232,176,75,.05)}
+.num{text-align:right;font-family:'IBM Plex Mono',monospace}
+.scroll{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:var(--r)}
+.pill{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;border:1px solid var(--line);color:var(--mute)}
+.pill.base{color:var(--tea);border-color:var(--tea)}
+.pill.sell{color:var(--gold);border-color:var(--gold)}
+.pos{color:var(--ok)} .neg{color:var(--bad)}
+.bar{height:6px;border-radius:4px;background:var(--panel2);overflow:hidden}
+.bar i{display:block;height:100%}
+.small{font-size:11px;color:var(--mute)}
+.chartbox{position:relative;height:420px}
+.chartbox.sm{height:280px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.66);display:none;z-index:100;padding:20px;overflow:auto}
+.modal.on{display:block}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:820px;margin:20px auto;padding:18px}
+.tag{font-size:11px;color:var(--mute)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+.gridtbl td{padding:3px 6px}
+.gridtbl input.cell{width:100%;min-width:56px;text-align:right;border:1px solid transparent;background:transparent;
+  border-radius:6px;padding:5px 6px;font-family:'IBM Plex Mono',monospace}
+.gridtbl input.cell:hover{border-color:var(--line)}
+.gridtbl input.cell:focus{border-color:var(--gold);background:var(--panel2);box-shadow:0 0 0 2px rgba(232,176,75,.18)}
+.gridtbl td.name{position:sticky;left:0;background:var(--panel);z-index:1;border-right:1px solid var(--line);min-width:190px}
+.gridtbl th.name{left:0;z-index:3}
+.gridtbl tr:hover td.name{background:var(--panel2)}
+.gridtbl tfoot th{position:sticky;bottom:0;background:var(--panel2)}
+.dirty{color:var(--warn)} .saved{color:var(--ok)}
+.gate{position:fixed;inset:0;background:#16110D;z-index:500;display:none;place-items:center;padding:20px;overflow:auto}
+.gate.on{display:grid}
+.gatebox{width:100%;max-width:390px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}
+.staff-hide{display:none!important}
+#rolechip.admin{color:var(--gold);border-color:var(--gold)}
+#rolechip.staff{color:var(--ok);border-color:var(--ok)}
+.locked{opacity:.55;pointer-events:none}
+.vbadge{font-size:11px;padding:3px 9px;border-radius:20px;background:rgba(79,176,165,.14);color:var(--ok);border:1px solid rgba(79,176,165,.45)}
+.st{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.st.short{background:rgba(224,91,74,.16);color:#F08D7E;border:1px solid rgba(224,91,74,.5)}
+.st.tight{background:rgba(232,176,75,.14);color:var(--gold);border:1px solid rgba(232,176,75,.45)}
+.st.ok{background:rgba(79,176,165,.14);color:var(--ok);border:1px solid rgba(79,176,165,.45)}
+.bigbox{height:520px;position:relative}
+.hero{background:linear-gradient(160deg,#2A2017,#1C1610);border:1px solid var(--gold)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel2);
+  border:1px solid var(--gold);border-radius:10px;padding:10px 16px;z-index:200;display:none}
+.toast.on{display:block}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="gatebox">
+    <div class="logo" style="justify-content:center;margin-bottom:6px"><div class="cup">🧋</div><b>Mamu Maru</b></div>
+    <div class="small" style="text-align:center;margin-bottom:16px">ເຂົ້າສູ່ລະບົບ ເພື່ອໃຊ້ງານ</div>
+    <div id="gate-forms">
+      <label class="f">ຊື່ຜູ້ໃຊ້<input id="g-email" type="text" autocapitalize="none" placeholder="admin ຫຼື staff"></label>
+      <label class="f" style="margin-top:10px">ລະຫັດຜ່ານ<input id="g-pass" type="password" placeholder="••••••••"></label>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" style="flex:1" onclick="doSignIn()">ເຂົ້າສູ່ລະບົບ</button>
+      </div>
+      <div class="small" id="g-msg" style="margin-top:12px;min-height:18px"></div>
+    </div>
+    <details id="g-cfg" style="margin-top:14px">
+      <summary class="small" style="cursor:pointer">ຕັ້ງຄ່າ Firebase (ເຮັດຄັ້ງດຽວຕໍ່ເຄື່ອງ)</summary>
+      <div class="grid" style="gap:8px;margin-top:10px">
+        <label class="f">API key<input id="g-apikey"></label>
+        <label class="f">Auth domain<input id="g-authdomain" placeholder="xxx.firebaseapp.com"></label>
+        <label class="f">Project ID<input id="g-project"></label>
+        <label class="f">App ID<input id="g-appid"></label>
+        <label class="f">ລະຫັດຮ້ານ<input id="g-shop" placeholder="mamumaru"></label>
+        <button class="btn sm" onclick="saveFbCfg()">ບັນທຶກ ແລະ ເຊື່ອມຕໍ່</button>
+      </div>
+    </details>
+    <div class="small" style="margin-top:14px;opacity:.75;line-height:1.7">ຮ້ານມີ 2 ບັນຊີ:<br>
+      <b>ຜູ້ຈັດການ</b> — ເຫັນ ແລະ ແກ້ໄຂໄດ້ທຸກຢ່າງ<br>
+      <b>ພະນັກງານ</b> — ໃສ່ແຜນຂາຍ, ນັບສະຕັອກ, ເບິ່ງລາຍການສັ່ງຊື້<br>
+      ພິມແຕ່ <b>admin</b> ຫຼື <b>staff</b> ຢູ່ຊ່ອງຊື່ຜູ້ໃຊ້ໄດ້ເລີຍ.<br>
+      ລືມລະຫັດຜ່ານ ຫຼື ຢາກປ່ຽນ ໃຫ້ຕິດຕໍ່ຜູ້ຈັດການ.</div>
+  </div>
+</div>
+
+<div class="top">
+  <div class="logo"><div class="cup">🧋</div><div><b>Mamu Maru</b><div class="small">ສູດ · ສະຕັອກ · ສັ່ງຊື້</div></div></div>
+  <span class="ver" id="ver">v5.0</span><span class="ver" id="rolechip" style="display:none"></span>
+  <div class="spacer"></div>
+  <span class="sync" id="sync">ເກັບໃນເຄື່ອງເທົ່ານັ້ນ</span>
+  <button class="btn sm ghost" onclick="saveCloud()">ບັນທຶກຂຶ້ນຄລາວ</button>
+  <button class="btn sm ghost" onclick="loadCloud()">ໂຫຼດໃໝ່</button>
+  <button class="btn sm ghost" id="viewas" style="display:none" onclick="setViewAs(VIEW_AS?null:'staff')"></button>
+  <button class="btn sm ghost" onclick="doSignOut()">ອອກຈາກລະບົບ</button>
+</div>
+
+<div class="nav" id="nav"></div>
+
+<div class="wrap">
+
+<!-- ============ DASHBOARD ============ -->
+<div class="page on" id="pg-dash">
+  <div class="card" id="demo-bar" style="display:none;border-color:var(--gold)">
+    <div class="row"><b style="color:var(--gold)">ກຳລັງໃຊ້ຂໍ້ມູນຕົວຢ່າງ</b>
+      <span class="small">ແຜນຂາຍ, ສະຕັອກ ແລະ ການຮັບເຂົ້າແບບຕົວຢ່າງ ເພື່ອໃຫ້ເຫັນວ່າແຕ່ລະໜ້າເຮັດວຽກແນວໃດ. ລຶບອອກເມື່ອພ້ອມໃສ່ຂໍ້ມູນຈິງ.</span>
+      <div class="spacer"></div>
+      <button class="btn sm ghost" onclick="clearDemo()">ລຶບຕົວຢ່າງ ແລ້ວເລີ່ມໃໝ່</button></div>
+  </div>
+
+  <div class="card hero">
+    <h3>ຈະຂາຍເທົ່າໃດ?</h3>
+    <div class="hint">ໃສ່ຈຳນວນຈອກທີ່ຄາດວ່າຈະຂາຍ ແລ້ວລະບົບຈະຄິດຈາກສູດວ່າ ແຕ່ລະວັດຖຸດິບຈະໃຊ້ໄປເທົ່າໃດ ທຽບກັບສະຕັອກທີ່ມີ ແລະ ອັນໃດຈະບໍ່ພຽງພໍ.</div>
+    <div class="row" style="margin-top:10px">
+      <label class="f">ຄິດຈາກ<select id="d-src" onchange="renderDash()">
+        <option value="plan">ແຜນການຂາຍທີ່ບັນທຶກໄວ້</option>
+        <option value="quick">ຄາດຄະເນດ່ວນ (ໃສ່ຈຳນວນຈອກ)</option>
+      </select></label>
+      <label class="f" id="wrap-cups">ຈຳນວນຈອກ<input type="number" id="d-cups" value="1000" style="width:120px" onchange="renderDash()" oninput="renderDash()"></label>
+      <label class="f">ເດືອນ<select id="d-month" onchange="renderDash()"></select></label>
+      <div class="spacer"></div>
+      <button class="btn sm" onclick="go('req')">ເປີດລາຍການສັ່ງຊື້</button>
+    </div>
+    <div class="hint" id="d-basis" style="margin-top:8px"></div>
+  </div>
+
+  <div class="grid kpis" id="d-kpis"></div>
+
+  <div class="card">
+    <h3>ຄວາມຕ້ອງການ ທຽບ ສະຕັອກທີ່ມີ</h3>
+    <div class="hint">ແທ່ງສີທອງ = ຈຳນວນທີ່ຈະໃຊ້ · ແທ່ງສີຂຽວ = ສະຕັອກທີ່ມີຢູ່. ຖ້າແທ່ງທອງຍາວກວ່າແທ່ງຂຽວ ແປວ່າ ວັດຖຸດິບນັ້ນຈະບໍ່ພຽງພໍ ຕ້ອງສັ່ງເພີ່ມ.</div>
+    <div class="row" style="margin:8px 0">
+      <label class="f">ສະແດງ<select id="d-show" onchange="renderDash()">
+        <option value="short">ສະເພາະອັນທີ່ຂາດ</option>
+        <option value="all">ທັງໝົດ</option>
+      </select></label>
+      <label class="f">ຈຳນວນລາຍການ<select id="d-top" onchange="renderDash()">
+        <option value="15">15</option><option value="25" selected>25</option><option value="40">40</option><option value="999">ໝົດ</option>
+      </select></label>
+    </div>
+    <div class="bigbox"><canvas id="ch-dm"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h3>ຕາຕະລາງ ຄວາມຕ້ອງການ ທຽບ ສະຕັອກ</h3>
+    <div class="hint">ຄໍລຳ “ຂາດ/ເຫຼືອ” ຕິດລົບ ໝາຍເຖິງ ຕ້ອງສັ່ງຊື້ເພີ່ມ.</div>
+    <div class="scroll"><table id="t-dm"></table></div>
+  </div>
+
+  <div class="split">
+    <div class="card"><h3>ແຕ່ລະອາທິດ — ຈອກ ແລະ ລາຍຮັບ</h3>
+      <div class="hint">ແທ່ງ = ຈຳນວນຈອກ, ເສັ້ນ = ເງິນ. ອາທິດ 5 ປົກກະຕິສັ້ນກວ່າ ຈຶ່ງເຫັນໜ້ອຍກວ່າ.</div>
+      <div class="chartbox sm"><canvas id="ch-week"></canvas></div></div>
+    <div class="card"><h3>ເງິນຂາຍ 1 ກີບ ໄປໃສ່ຫຍັງ</h3>
+      <div class="hint">ວັດຖຸດິບຕາມສູດ, ຂອງເສຍຕາມ Q factor, ສ່ວນທີ່ເຫຼືອແມ່ນກຳໄລຂັ້ນຕົ້ນ ກ່ອນຄ່າເຊົ່າ ຄ່າແຮງ ແລະ ຈອກ.</div>
+      <div class="chartbox sm"><canvas id="ch-money"></canvas></div></div>
+  </div>
+  <div class="split">
+    <div class="card"><h3>ໃຊ້ໄດ້ອີກຈັກອາທິດ — ອັນໃດຈະໝົດກ່ອນ</h3>
+      <div class="hint">ສະຕັອກທີ່ມີ ຫານດ້ວຍ ການໃຊ້ 1 ອາທິດ. ຕ່ຳກວ່າ 1 ອາທິດ (ສີແດງ) ຄື ຈະບໍ່ພໍໃຊ້ໃນອາທິດໜ້າ.</div>
+      <div class="chartbox sm"><canvas id="ch-cover"></canvas></div></div>
+    <div class="card"><h3>ກຳໄລແຕ່ລະເມນູ</h3>
+      <div class="hint">ກຳໄລຂັ້ນຕົ້ນເປັນກີບ. ແທ່ງສັ້ນ = ຂາຍໄດ້ຫຼາຍ ແຕ່ໄດ້ກຳໄລໜ້ອຍ.</div>
+      <div class="chartbox sm"><canvas id="ch-margin"></canvas></div></div>
+  </div>
+  <div class="split">
+    <div class="card"><h3>12 ລາຍການ ທີ່ໃຊ້ເງິນສັ່ງຊື້ຫຼາຍທີ່ສຸດ</h3><div class="chartbox sm"><canvas id="ch-cost"></canvas></div></div>
+    <div class="card"><h3>ລາຍຮັບຕາມເມນູ (12 ອັນດັບ)</h3><div class="chartbox sm"><canvas id="ch-rev"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ============ SALES PLAN ============ -->
+<div class="page" id="pg-plan">
+  <div class="card">
+    <div class="row">
+      <label class="f">ເດືອນ<select id="p-month" onchange="renderPlan()"></select></label>
+      <input id="p-search" placeholder="ຄົ້ນຫາເມນູ…" oninput="renderPlan()" style="min-width:180px">
+      <button class="btn sm ghost" onclick="copyPlanPrev()">ສຳເນົາເດືອນກ່ອນ</button>
+      <button class="btn sm ghost" onclick="fillPlan()">ໃສ່ທຸກເມນູພ້ອມກັນ</button>
+      <button class="btn sm ghost" onclick="clearPlan()">ລ້າງເດືອນນີ້</button>
+      <button class="btn sm ghost" onclick="exportPlanCSV()">ດາວໂຫຼດ CSV</button>
+      <div class="spacer"></div>
+      <span class="small" id="p-dirty"></span>
+      <button class="btn sm" onclick="savePlan()">ບັນທຶກແຜນ</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>ຈຳນວນຈອກທີ່ວາງແຜນຂາຍ ຕໍ່ເດືອນ</h3>
+    <div class="hint">ໃສ່ຈຳນວນຈອກທີ່ຄາດວ່າຈະຂາຍທັງເດືອນ 1 ຊ່ອງຕໍ່ 1 ເມນູ. ກົດລູກສອນ ຫຼື Enter ເພື່ອລົງແຖວຕໍ່ໄປ, ຫຼື copy ຄໍລຳຈາກ Excel ມາ paste ທັງໝົດກໍ່ໄດ້. ພິມແລ້ວເກັບໃນເຄື່ອງທັນທີ — ກົດ <b>ບັນທຶກແຜນ</b> ເພື່ອສົ່ງຂຶ້ນຄລາວ.</div>
+    <div class="scroll" id="planwrap"><table id="t-plan" class="gridtbl"></table></div>
+    <div class="row" style="margin-top:10px"><span class="small" id="p-tot"></span></div>
+  </div>
+</div>
+
+<!-- ============ REQUIREMENT / ORDER ============ -->
+<div class="page" id="pg-req">
+  <div class="card">
+    <div class="row">
+      <label class="f">ເດືອນ<select id="r-month" onchange="renderReq()"></select></label>
+      <label class="f">ຂອງເສຍ %<input type="number" id="r-waste" style="width:80px" onchange="setWaste(this.value)"></label>
+      <label class="f">ສະຕັອກສຳຮອງ %<input type="number" id="r-safety" style="width:90px" onchange="setSafety(this.value)"></label>
+      <label class="f">ສະແດງ<select id="r-filter" onchange="renderReq()">
+        <option value="short">ສະເພາະອັນທີ່ຕ້ອງສັ່ງ</option><option value="all">ທັງໝົດ</option>
+      </select></label>
+      <div class="spacer"></div>
+      <button class="btn sm ghost" onclick="exportOrderCSV()">ດາວໂຫຼດ CSV</button>
+      <button class="btn sm" onclick="orderToPurch()">ຂອງມາຮອດແລ້ວ → ບັນທຶກເປັນຊື້ເຂົ້າ</button>
+    </div>
+  </div>
+  <div class="grid kpis" id="r-kpis"></div>
+  <div class="card">
+    <h3>ລາຍການສັ່ງຊື້</h3>
+    <div class="hint">ຈຳນວນທີ່ຕ້ອງສັ່ງ = ທີ່ຈະໃຊ້ + ຂອງເສຍ + ສະຕັອກສຳຮອງ − (ສະຕັອກຕົ້ນເດືອນ + ທີ່ຮັບເຂົ້າແລ້ວ). ປັດຂຶ້ນເປັນຈຳນວນຖົງເຕັມ.</div>
+    <div class="scroll"><table id="t-req"></table></div>
+  </div>
+</div>
+
+<!-- ============ STOCK ============ -->
+<div class="page" id="pg-stock">
+  <div class="card">
+    <div class="row">
+      <label class="f">ເດືອນ<select id="s-month" onchange="renderStock()"></select></label>
+      <label class="f" class="admin-only">ຄິດການໃຊ້ຈາກ<select id="s-basis" onchange="renderStock()">
+        <option value="plan">ແຜນການຂາຍ</option><option value="actual">ຈຳນວນຈອກທີ່ຂາຍຈິງ</option>
+      </select></label>
+      <div class="spacer"></div>
+      <span id="s-vstat"></span>
+      <button class="btn sm ghost admin-only" onclick="pullPrevClosing()">ດຶງສະຕັອກຕົ້ນເດືອນ ຈາກທ້າຍເດືອນກ່ອນ</button>
+      <button class="btn sm admin-only" onclick="validateCount()">ກວດສອບ ແລະ ຢືນຢັນການນັບ</button>
+      <button class="btn sm admin-only" onclick="closeMonth()">ປິດເດືອນ → ສົ່ງໄປເດືອນໜ້າ</button>
+    </div>
+    <div class="hint" style="margin-top:8px">ສະຕັອກທ້າຍເດືອນ = ຕົ້ນເດືອນ + ຮັບເຂົ້າ − ໃຊ້ໄປ. ເມື່ອປິດເດືອນ ຕົວເລກທ້າຍເດືອນຈະກາຍເປັນຕົ້ນເດືອນຂອງເດືອນໜ້າ. ຖ້ານັບຂອງຈິງ ໃຫ້ໃສ່ໃນຊ່ອງ “ນັບຈິງ” ແລ້ວຈະເຫັນຜົນຕ່າງວ່າຫາຍໄປເທົ່າໃດ.</div>
+  </div>
+  <div class="hint" id="s-staffhint" style="margin:0 0 12px"></div>
+  <div class="grid kpis admin-only" id="s-kpis"></div>
+  <div class="card">
+    <h3>ບັດສະຕັອກລາຍເດືອນ</h3>
+    <div class="scroll"><table id="t-stock"></table></div>
+  </div>
+</div>
+
+<!-- ============ PURCHASES ============ -->
+<div class="page" id="pg-buy">
+  <div class="card">
+    <div class="row">
+      <label class="f">ເດືອນ<select id="b-month" onchange="renderPurch()"></select></label>
+      <div class="spacer"></div>
+      <span class="small">ບັນທຶກທຸກຄັ້ງທີ່ຮັບຂອງເຂົ້າສາງ ແລ້ວສະຕັອກຈະອັບເດດເອງ</span>
+    </div>
+  </div>
+  <div class="grid kpis" id="b-kpis"></div>
+  <div class="card">
+    <h3>ບັນທຶກການຊື້ເຂົ້າ</h3>
+    <div class="row" style="margin-top:8px;align-items:flex-end">
+      <label class="f" style="flex:2;min-width:220px">ວັດຖຸດິບ<select id="b-ing" onchange="bCalc()"></select></label>
+      <label class="f">ຈຳນວນຖົງ<input type="number" id="b-packs" style="width:100px" oninput="bCalc()"></label>
+      <label class="f">ກຣາມລວມ<input type="number" id="b-qty" style="width:110px" oninput="this.dataset.touched=1"></label>
+      <label class="f admin-only">ເປັນເງິນ ₭<input type="number" id="b-cost" style="width:120px" oninput="this.dataset.touched=1"></label>
+      <label class="f" style="flex:1;min-width:150px">ໝາຍເຫດ<input id="b-note" placeholder="ຜູ້ຂາຍ / ໃບບິນ"></label>
+      <button class="btn" onclick="savePurch()">+ ເພີ່ມ</button>
+    </div>
+    <div class="hint" id="b-hint" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h3>ລາຍການທີ່ຊື້ເຂົ້າໃນເດືອນນີ້</h3>
+    <div class="scroll"><table id="t-purch"></table></div>
+  </div>
+</div>
+
+<!-- ============ INGREDIENTS ============ -->
+<div class="page" id="pg-ing">
+  <div class="card">
+    <div class="row">
+      <input id="i-search" placeholder="ຄົ້ນຫາວັດຖຸດິບ…" oninput="renderIng()" style="min-width:220px">
+      <label class="f admin-only">ອັດຕາ 1 ບາດ = <input type="number" id="i-fx" style="width:90px" onchange="setFx(this.value)"> ກີບ</label>
+      <div class="spacer"></div>
+      <button class="btn sm admin-only" onclick="addIng()">+ ເພີ່ມວັດຖຸດິບ</button>
+    </div>
+  </div>
+  <div class="card admin-only" id="noprice" style="display:none;border-color:var(--bad)"></div>
+  <div class="card">
+    <h3>ລາຍການວັດຖຸດິບ</h3>
+    <div class="hint">ຕົ້ນທຶນຕໍ່ກຣາມ ເປັນຕົວກຳນົດຕົ້ນທຶນຂອງທຸກສູດ. ໃສ່ລາຄາເປັນບາດ ຫຼື ກີບ ກໍ່ໄດ້ — ອີກຊ່ອງໜຶ່ງຈະຄິດຕາມອັດຕາແລກປ່ຽນ.</div>
+    <div class="scroll"><table id="t-ing"></table></div>
+  </div>
+</div>
+
+<!-- ============ RECIPES ============ -->
+<div class="page" id="pg-rec">
+  <div class="card">
+    <div class="row">
+      <input id="rc-search" placeholder="ຄົ້ນຫາເມນູ…" oninput="renderRecList()" style="min-width:220px">
+      <div class="spacer"></div>
+      <button class="btn sm admin-only" onclick="addRecipe()">+ ເພີ່ມເມນູ</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>ເມນູ ແລະ ເບສ</h3>
+    <div class="hint">ເບສ (ບໍ່ມີລາຄາຂາຍ) ຄືສ່ວນປະສົມທີ່ເອົາໄປໃຊ້ໃນເມນູອື່ນ. ຕົ້ນທຶນຕໍ່ກຣາມຂອງເບສ ຄິດຈາກວັດຖຸດິບຂອງມັນເອງ ລົງໄປທຸກຊັ້ນ.</div>
+    <div class="scroll"><table id="t-rec"></table></div>
+  </div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div class="page" id="pg-note">
+  <div class="card">
+    <div class="row">
+      <input id="n-search" placeholder="ຄົ້ນຫາເມນູ ຫຼື ສ່ວນປະສົມ…" oninput="renderNotes()" style="min-width:260px">
+      <div class="spacer"></div>
+      <span class="small">ວິທີຊົງຈາກຄູ່ມືໜ້າຮ້ານ</span>
+    </div>
+  </div>
+  <div id="notes-body"></div>
+</div>
+
+<div class="page" id="pg-set">
+  <div class="card">
+    <h3>ບັນຊີຜູ້ໃຊ້</h3>
+    <div class="hint">ຮ້ານໃຊ້ 2 ບັນຊີກາງ ບໍ່ຕ້ອງສ້າງລາຍຄົນ. ສິດຂຶ້ນກັບອີເມວທີ່ເຂົ້າສູ່ລະບົບ.</div>
+    <div id="acct-info" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h3>ປ່ຽນລະຫັດຜ່ານ</h3>
+    <div class="hint">ບັນຊີ 2 ອັນຝັງໄວ້ໃນແອັບແລ້ວ ບໍ່ຕ້ອງໄປສ້າງໃນ Firebase. ປ່ຽນລະຫັດຜ່ານໄດ້ຈາກບ່ອນນີ້ເລີຍ.</div>
+    <div class="split" style="margin-top:12px">
+      <div>
+        <div class="l small" style="margin-bottom:8px">ບັນຊີທີ່ກຳລັງໃຊ້ຢູ່ (ຜູ້ຈັດການ)</div>
+        <div class="row">
+          <label class="f">ລະຫັດຜ່ານໃໝ່<input type="password" id="pw-new" style="width:150px"></label>
+          <label class="f">ພິມຊ້ຳອີກຄັ້ງ<input type="password" id="pw-new2" style="width:150px"></label>
+          <button class="btn sm" style="align-self:end" onclick="changeMyPw()">ປ່ຽນ</button>
+        </div>
+        <div class="small" id="pw-msg" style="margin-top:8px;min-height:18px"></div>
+      </div>
+      <div>
+        <div class="l small" style="margin-bottom:8px">ບັນຊີພະນັກງານ</div>
+        <div class="row">
+          <label class="f">ລະຫັດຜ່ານປັດຈຸບັນ<input type="password" id="sp-cur" style="width:150px"></label>
+          <label class="f">ລະຫັດຜ່ານໃໝ່<input type="password" id="sp-new" style="width:150px"></label>
+          <button class="btn sm" style="align-self:end" onclick="changeStaffPw()">ປ່ຽນ</button>
+        </div>
+        <div class="small" id="sp-msg" style="margin-top:8px;min-height:18px"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Firebase</h3>
+    <div class="hint">ຂໍ້ມູນທັງໝົດເກັບເປັນເອກະສານດຽວໃນ Firestore ທີ່ <span class="mono">shops/{ລະຫັດຮ້ານ}</span>. ທຸກເຄື່ອງທີ່ login ດ້ວຍໂປຣເຈັກດຽວກັນ ຈະເຫັນຂໍ້ມູນຄືກັນ.</div>
+    <div class="row" style="margin-top:10px">
+      <label class="f" style="flex:1;min-width:230px">API key<input id="cf-apikey"></label>
+      <label class="f" style="flex:1;min-width:230px">Auth domain<input id="cf-authdomain"></label>
+      <label class="f" style="flex:1;min-width:180px">Project ID<input id="cf-project"></label>
+      <label class="f" style="flex:1;min-width:230px">App ID<input id="cf-appid"></label>
+      <label class="f">ລະຫັດຮ້ານ<input id="cf-shop" style="width:140px"></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" onclick="saveCfg()">ບັນທຶກການຕັ້ງຄ່າ</button>
+      <button class="btn ghost" onclick="loadCloud()">ໂຫຼດຈາກຄລາວ</button>
+      <button class="btn ghost" onclick="saveCloud()">ສົ່ງຂຶ້ນຄລາວ</button>
+    </div>
+    <details style="margin-top:12px"><summary class="small" style="cursor:pointer">ກົດລະບຽບ Firestore ທີ່ຄວນໃສ່</summary>
+<pre class="mono small" style="white-space:pre-wrap;background:var(--panel2);padding:10px;border-radius:10px">rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /shops/{shop} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}</pre>
+<div class="hint">ກົດລະບຽບນີ້ຮຽກຮ້ອງໃຫ້ login ກ່ອນ. ການເຊື່ອງຕົ້ນທຶນຈາກພະນັກງານ ເປັນການເຊື່ອງໃນໜ້າຈໍ — ຄົນທີ່ຮູ້ເລື່ອງເທັກນິກ ຍັງອາດອ່ານຂໍ້ມູນດິບໄດ້. ຖ້າຕ້ອງການປ້ອງກັນແທ້ ຕ້ອງແຍກເອກະສານຕົ້ນທຶນອອກ ແລ້ວຕັ້ງກົດລະບຽບຕາມສິດ.</div>
+    </details>
+  </div>
+  <div class="card">
+    <h3>ຈັດການເດືອນ</h3>
+    <div class="hint">ລະບົບສະແດງ 12 ເດືອນນັບຈາກເດືອນເລີ່ມຕົ້ນ. ລຶບເດືອນໃດກໍ່ໄດ້ ຖ້າໃສ່ຜິດ ຫຼື ບໍ່ໄດ້ໃຊ້.</div>
+    <div class="row" style="margin-top:10px">
+      <label class="f">ເລີ່ມນັບຈາກເດືອນ<input type="month" id="cf-start" onchange="setStartMonth(this.value)"></label>
+      <label class="f">ເລືອກເດືອນ<select id="m-pick"></select></label>
+      <button class="btn danger sm" style="align-self:end" onclick="delMonth()">ລຶບຂໍ້ມູນເດືອນນີ້</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>ຄ່າເລີ່ມຕົ້ນ</h3>
+    <div class="row">
+      <label class="f">Q factor / ຂອງເສຍ %<input type="number" id="cf-q" style="width:100px"></label>
+      <label class="f">ສະຕັອກສຳຮອງ %<input type="number" id="cf-safety" style="width:100px"></label>
+      <label class="f">1 ບາດ = ກີບ<input type="number" id="cf-fx" style="width:110px"></label>
+      <button class="btn sm" onclick="saveCfg()" style="align-self:end">ບັນທຶກ</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>ສຳຮອງຂໍ້ມູນ</h3>
+    <div class="row">
+      <button class="btn ghost sm" onclick="exportJSON()">ດາວໂຫຼດໄຟລ໌ສຳຮອງ</button>
+      <label class="btn ghost sm" style="cursor:pointer">ກູ້ຄືນຈາກໄຟລ໌<input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(this)"></label>
+      <button class="btn ghost sm" onclick="loadDemo(true)">ໂຫຼດຂໍ້ມູນຕົວຢ່າງ</button>
+      <button class="btn ghost sm" onclick="clearDemo()">ລ້າງແຜນ ແລະ ສະຕັອກ</button>
+      <button class="btn danger sm" onclick="resetSeed()">ຣີເຊັດກັບໄປຂໍ້ມູນ Excel</button>
+    </div>
+    <div class="hint" style="margin-top:8px">ການຣີເຊັດຈະລຶບສະຕັອກ ແຜນ ແລະ ການແກ້ໄຂທັງໝົດ ແລ້ວໂຫຼດສູດຕົ້ນສະບັບຈາກ Excel ຄືນມາ.</div>
+  </div>
+</div>
+
+</div>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= CORE ================= */
+const VER='v5.0';
+const SEED={"ings":[{"name":"ชาหอมหมืนลี้","code":"ST001","pack":500.0,"thb":320.0,"lak":220800.0,"stockable":1,"id":"I001"},{"name":"ชาถุงเขียว","code":"ST002","pack":600.0,"thb":300.0,"lak":207000.0,"stockable":1,"id":"I002"},{"name":"ชาอัสสัมไต้หวันซินเต๋อ","code":"ST003","pack":600.0,"thb":350.0,"lak":241500.0,"stockable":1,"id":"I003"},{"name":"ชาซีลอน NL Coffee","code":"ST004","pack":500.0,"thb":220.0,"lak":151800.0,"stockable":1,"id":"I004"},{"name":"ชาซีลอน ตราสุนัขตำรวจ","code":"ST005","pack":400.0,"thb":53.0,"lak":36570.0,"stockable":1,"id":"I005"},{"name":"กาแฟโบรานมังกรบินถุงสีฟ้า","code":"ST006","pack":1000.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I006"},{"name":"ชาอินโด wanjai","code":"ST007","pack":1000.0,"thb":300.0,"lak":207000.0,"stockable":1,"id":"I007"},{"name":"ชาตรามือถุงแดง","code":"ST008","pack":400.0,"thb":95.0,"lak":65550.0,"stockable":1,"id":"I008"},{"name":"ชาแดง ตรามังกรบินถุงสีส้ม","code":"ST009","pack":450.0,"thb":65.0,"lak":44850.0,"stockable":1,"id":"I009"},{"name":"ชามาเล ตราม้าบิน","code":"ST010","pack":1000.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I010"},{"name":"ชาใต้อินทรีแดง","code":"ST011","pack":1000.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I011"},{"name":"ใบชาเขียว รินชา","code":"ST012","pack":1000.0,"thb":400.0,"lak":276000.0,"stockable":1,"id":"I012"},{"name":"ใบชาเขียว ตรามือ","code":"ST013","pack":200.0,"thb":80.0,"lak":55200.0,"stockable":1,"id":"I013"},{"name":"ใบชาเขียว ช้างทอง","code":"ST014","pack":200.0,"thb":70.0,"lak":48300.0,"stockable":1,"id":"I014"},{"name":"มังกรบินเขียว","code":"ST015","pack":200.0,"thb":65.0,"lak":44850.0,"stockable":1,"id":"I015"},{"name":"ผงโกโก้ ตราทิวลิป","code":"ST016","pack":440.0,"thb":220.0,"lak":151800.0,"stockable":1,"id":"I016"},{"name":"ผงโกโก้ Dreammy","code":"ST017","pack":500.0,"thb":200.0,"lak":138000.0,"stockable":1,"id":"I017"},{"name":"นมผง Dreamy Milky Cream","code":"ST018","pack":1000.0,"thb":120.0,"lak":82800.0,"stockable":1,"id":"I018"},{"name":"นมข้นหวานคาร์เนชั่น","code":"ST019","pack":2000.0,"thb":115.0,"lak":79350.0,"stockable":1,"id":"I019"},{"name":"นมข้นจืดคาร์เนชั่น","code":"ST020","pack":1000.0,"thb":70.0,"lak":48300.0,"stockable":1,"id":"I020"},{"name":"ครีมเทียม Coffee Dreamy","code":"ST021","pack":1000.0,"thb":80.0,"lak":55200.0,"stockable":1,"id":"I021"},{"name":"น้ำตาลทรายขาว","code":"ST022","pack":1000.0,"thb":27.0,"lak":18630.0,"stockable":1,"id":"I022"},{"name":"น้ำตาลทรายแดง","code":"ST023","pack":1000.0,"thb":34.0,"lak":23460.0,"stockable":1,"id":"I023"},{"name":"ครีมชีส Dreamy","code":"ST024","pack":400.0,"thb":140.0,"lak":96600.0,"stockable":1,"id":"I024"},{"name":"ครีมชีส ดีวัน","code":"ST025","pack":450.0,"thb":140.0,"lak":96600.0,"stockable":1,"id":"I025"},{"name":"วิปครีมแบบน้ำ Risso","code":"ST026","pack":1000.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I026"},{"name":"วิปครีมแบบน้ำ Millac Gold (สำรอง)","code":"ST027","pack":1000.0,"thb":185.0,"lak":127650.0,"stockable":1,"id":"I027"},{"name":"วิปครีมผงDreamy ถุงสีฟ้า","code":"ST028","pack":500.0,"thb":140.0,"lak":96600.0,"stockable":1,"id":"I028"},{"name":"วิปครีมผงDreamy ถุงสีชมพู","code":"ST029","pack":500.0,"thb":140.0,"lak":96600.0,"stockable":1,"id":"I029"},{"name":"กระทิผง","code":"ST030","pack":1000.0,"thb":200.0,"lak":138000.0,"stockable":1,"id":"I030"},{"name":"กระทิแบบน้ำ","code":"ST031","pack":1000.0,"thb":80.0,"lak":55200.0,"stockable":1,"id":"I031"},{"name":"แป้งข้าวโพด","code":"ST032","pack":700.0,"thb":60.0,"lak":41400.0,"stockable":1,"id":"I032"},{"name":"ผงมัทฉะมังกรบิน","code":"ST033","pack":100.0,"thb":100.0,"lak":69000.0,"stockable":1,"id":"I033"},{"name":"แป้งข้าวเหนียว ตราใบหยก","code":"ST034","pack":1000.0,"thb":40.0,"lak":27600.0,"stockable":1,"id":"I034"},{"name":"แป้งมันตราปลาไทย","code":"ST035","pack":500.0,"thb":15.0,"lak":10350.0,"stockable":1,"id":"I035"},{"name":"แป้งเค้กตรามงกุดม่วง","code":"ST036","pack":1000.0,"thb":35.0,"lak":24150.0,"stockable":1,"id":"I036"},{"name":"แป้งไดฟูกุสะตอเบอรี่ ตรา Koon","code":"ST037","pack":800.0,"thb":280.0,"lak":193200.0,"stockable":1,"id":"I037"},{"name":"แป้งไดฟูกุ ตรา เชฟใหญ่","code":"ST038","pack":1000.0,"thb":130.0,"lak":89700.0,"stockable":1,"id":"I038"},{"name":"เนยขาว","code":"ST039","pack":1000.0,"thb":70.0,"lak":48300.0,"stockable":1,"id":"I039"},{"name":"แบ๊ะแซ","code":"ST040","pack":1000.0,"thb":50.0,"lak":34500.0,"stockable":1,"id":"I040"},{"name":"น้ำมัน KING ใส่แป้งโมจิ","code":"ST041","pack":5000.0,"thb":450.0,"lak":310500.0,"stockable":1,"id":"I041"},{"name":"เกลือ","code":"ST042","pack":1000.0,"thb":20.0,"lak":13800.0,"stockable":1,"id":"I042"},{"name":"กลิ่นวนิลา","code":"ST043","pack":2000.0,"thb":120.0,"lak":82800.0,"stockable":1,"id":"I043"},{"name":"มาการีน ทามือปั้นโมจิ","code":"ST044","pack":454.0,"thb":86.0,"lak":59340.0,"stockable":1,"id":"I044"},{"name":"วิปครีมแบบก้อน อิมพีเรียล","code":"ST045","pack":1000.0,"thb":285.0,"lak":196650.0,"stockable":1,"id":"I045"},{"name":"ผงสะตอเบอรี่","code":"ST046","pack":100.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I046"},{"name":"ผงบูเบอรี่","code":"ST047","pack":100.0,"thb":160.0,"lak":110400.0,"stockable":1,"id":"I047"},{"name":"ผงทุเรียน","code":"ST048","pack":100.0,"thb":160.0,"lak":110400.0,"stockable":1,"id":"I048"},{"name":"ผงใบเตย","code":"ST049","pack":100.0,"thb":160.0,"lak":110400.0,"stockable":1,"id":"I049"},{"name":"โอลิโอ้แบบชิ้น","code":"ST050","pack":460.0,"thb":80.0,"lak":55200.0,"stockable":1,"id":"I050"},{"name":"Biscoff","code":"ST051","pack":750.0,"thb":250.0,"lak":172500.0,"stockable":1,"id":"I051"},{"name":"คุ๊กกี้บดรสวนิลา","code":"ST052","pack":1000.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I052"},{"name":"คุ๊กกี้บดรสchocolate","code":"ST053","pack":1000.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I053"},{"name":"คอนเฟลก","code":"ST054","pack":1000.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I054"},{"name":"โอวัลตินเฟลค","code":"ST055","pack":450.0,"thb":140.0,"lak":96600.0,"stockable":1,"id":"I055"},{"name":"วาฟเฟิลอบกรอบchocolate","code":"ST056","pack":500.0,"thb":120.0,"lak":82800.0,"stockable":1,"id":"I056"},{"name":"วาฟเฟิลอบกรอบวนิลา","code":"ST057","pack":500.0,"thb":120.0,"lak":82800.0,"stockable":1,"id":"I057"},{"name":"Fersa Nut Chocolate","code":"ST058","pack":900.0,"thb":260.0,"lak":179400.0,"stockable":1,"id":"I058"},{"name":"โคนไอติม","code":"ST059","pack":8.0,"thb":70.0,"lak":48300.0,"stockable":1,"id":"I059"},{"name":"เส้นคูนาฟ่าอบกรอบ","code":"ST060","pack":1000.0,"thb":700.0,"lak":483000.0,"stockable":1,"id":"I060"},{"name":"แป้งWarabi Mochi","code":"ST061","pack":200.0,"thb":110.0,"lak":75900.0,"stockable":1,"id":"I061"},{"name":"ผงเผือก","code":"ST062","pack":1000.0,"thb":135.0,"lak":93150.0,"stockable":1,"id":"I062"},{"name":"ผงชาเลม่อน","code":"ST063","pack":1000.0,"thb":280.0,"lak":193200.0,"stockable":1,"id":"I063"},{"name":"ผงปั่น แบบผลไม้ Long Beach","code":"ST064","pack":400.0,"thb":130.0,"lak":89700.0,"stockable":1,"id":"I064"},{"name":"ผงปั่น แบบนม Long Beach","code":"ST065","pack":400.0,"thb":130.0,"lak":89700.0,"stockable":1,"id":"I065"},{"name":"ผงปั่น แบบโยเกริ์ต Long Beach","code":"ST066","pack":400.0,"thb":130.0,"lak":89700.0,"stockable":1,"id":"I066"},{"name":"บุกบาวซูก้า","code":"ST067","pack":2500.0,"thb":350.0,"lak":241500.0,"stockable":1,"id":"I067"},{"name":"บุุกใสเฉากี้ เฉากี้","code":"ST068","pack":900.0,"thb":60.0,"lak":41400.0,"stockable":1,"id":"I068"},{"name":"วุ้นมะพร้าวใสตราใบเฟริน","code":"ST069","pack":900.0,"thb":40.0,"lak":27600.0,"stockable":1,"id":"I069"},{"name":"บ๊วยโหลใหญ่","code":"ST070","pack":1800.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I070"},{"name":"บ๊วยดอกคำ","code":"ST071","pack":500.0,"thb":100.0,"lak":69000.0,"stockable":1,"id":"I071"},{"name":"โซดา","code":"ST072","pack":325.0,"thb":9.0,"lak":6210.0,"stockable":1,"id":"I072"},{"name":"แปปซ๊่","code":"ST073","pack":1450.0,"thb":30.0,"lak":20700.0,"stockable":1,"id":"I073"},{"name":"เนื้อเลม่อนเชื่อม","code":"ST074","pack":1000.0,"thb":460.0,"lak":317400.0,"stockable":1,"id":"I074"},{"name":"ไซรัปผึ้งยิ้ม","code":"ST075","pack":1000.0,"thb":220.0,"lak":151800.0,"stockable":1,"id":"I075"},{"name":"ไซรัปส้มยูสุ Nature Teste","code":"ST076","pack":750.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I076"},{"name":"ไซรัปเลม่อน Nature Teste","code":"ST077","pack":750.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I077"},{"name":"ไซรัปฝรั่งหมากสีดา Nature Teste","code":"ST078","pack":750.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I078"},{"name":"ไซรัปองุ่นเขียวไซมัสคัส Nature Teste","code":"ST079","pack":750.0,"thb":190.0,"lak":131100.0,"stockable":1,"id":"I079"},{"name":"ไซรัปองุ่นแดงเคียวโฮ Nature Teste","code":"ST080","pack":750.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I080"},{"name":"ไซรัปองุ่นแดงเคียวโฮ Long Beach","code":"ST081","pack":740.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I081"},{"name":"ไซรัปพีส Nature Teste","code":"ST082","pack":750.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I082"},{"name":"ไซรัปพีส Long Beach","code":"ST083","pack":740.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I083"},{"name":"ไซรัปกะเจี๊ยบ Long Beach","code":"ST084","pack":740.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I084"},{"name":"ไซรัปมิกเบอรี่ Nature Teste","code":"ST085","pack":750.0,"thb":180.0,"lak":124200.0,"stockable":1,"id":"I085"},{"name":"ไซรัปละลายเร็ว","code":"ST086","pack":800.0,"thb":40.0,"lak":27600.0,"stockable":1,"id":"I086"},{"name":"ชอสราด Juniper Topping ชาไทย","code":"ST087","pack":500.0,"thb":80.0,"lak":55200.0,"stockable":1,"id":"I087"},{"name":"ชอสราด Juniper Topping ชาเขียว","code":"ST088","pack":500.0,"thb":80.0,"lak":55200.0,"stockable":1,"id":"I088"},{"name":"ชอสราด Juniper Topping chocolate","code":"ST089","pack":500.0,"thb":80.0,"lak":55200.0,"stockable":1,"id":"I089"},{"name":"ชอสราด Juniper Topping white chocolate","code":"ST090","pack":500.0,"thb":80.0,"lak":55200.0,"stockable":1,"id":"I090"},{"name":"ส้มฟรีซ","code":"ST091","pack":1000.0,"thb":110.0,"lak":75900.0,"stockable":1,"id":"I091"},{"name":"พีสฟรีซ","code":"ST092","pack":1000.0,"thb":85.0,"lak":58650.0,"stockable":1,"id":"I092"},{"name":"มิกเบอรี่ฟรีซ","code":"ST093","pack":1000.0,"thb":180.0,"lak":124200.0,"stockable":1,"id":"I093"},{"name":"เผือกกวน","code":"ST094","pack":1000.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I094"},{"name":"มันม่วงกวน","code":"ST095","pack":1000.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I095"},{"name":"ชีดเส้นขูด","code":"ST096","pack":1000.0,"thb":320.0,"lak":220800.0,"stockable":1,"id":"I096"},{"name":"ฝอยทอง","code":"ST097","pack":1000.0,"thb":180.0,"lak":124200.0,"stockable":1,"id":"I097"},{"name":"ฝอยเขียว","code":"ST098","pack":1000.0,"thb":180.0,"lak":124200.0,"stockable":1,"id":"I098"},{"name":"ไข่ไก่เบอร์ 0","code":"ST099","pack":30.0,"thb":7.0,"lak":4830.0,"stockable":1,"id":"I099"},{"name":"ข้าวจี่","code":"ST100","pack":400.0,"thb":36.3,"lak":25047.0,"stockable":1,"id":"I100"},{"name":"น้ำ","code":"ST101","pack":8000.0,"thb":17.0,"lak":11730.0,"stockable":0,"id":"I101"},{"name":"chocolate เม็ดใส่คีมชีด","code":"ST102","pack":1000.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I102"},{"name":"ผงบ๊วย","code":"ST103","pack":1000.0,"thb":120.0,"lak":82800.0,"stockable":1,"id":"I103"},{"name":"น้ำตาลปี๊บ","code":"ST104","pack":1000.0,"thb":50.0,"lak":34500.0,"stockable":1,"id":"I104"},{"name":"อะงุ่นแดงเคียวโฮ","code":"ST105","pack":1000.0,"thb":200.0,"lak":138000.0,"stockable":1,"id":"I105"},{"name":"หมากสีดา","code":"ST106","pack":1000.0,"thb":60.0,"lak":41400.0,"stockable":1,"id":"I106"},{"name":"อะงุ่นไซมัสคัส","code":"ST107","pack":1000.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I107"},{"name":"พริกแดงสด","code":"ST108","pack":1000.0,"thb":70.0,"lak":48300.0,"stockable":1,"id":"I108"},{"name":"เบสิกชาไทย","code":"ST109","pack":10000.0,"thb":643.0,"lak":443670.0,"stockable":1,"id":"I109"},{"name":"นมปะสม","code":"ST110","pack":1000.0,"thb":139.0,"lak":95910.0,"stockable":1,"id":"I110"},{"name":"เบสิกชาเขียวมัทฉะ","code":"ST111","pack":10000.0,"thb":910.0,"lak":627900.0,"stockable":1,"id":"I111"},{"name":"บุกใส","code":"ST112","pack":2700.0,"thb":140.0,"lak":96600.0,"stockable":1,"id":"I112"},{"name":"เบสิกชาใส","code":"ST113","pack":5000.0,"thb":53.0,"lak":36570.0,"stockable":1,"id":"I113"},{"name":"พิกน้ำตาลปี๊บ","code":"ST114","pack":1000.0,"thb":62.0,"lak":42780.0,"stockable":1,"id":"I114"},{"name":"ซอสบ๊วย","code":"ST115","pack":500.0,"thb":72.0,"lak":49680.0,"stockable":1,"id":"I115"},{"name":"เบสิกโกโก้","code":"ST116","pack":10000.0,"thb":731.0,"lak":504390.0,"stockable":1,"id":"I116"},{"name":"เบสิกชานม","code":"ST117","pack":5000.0,"thb":140.0,"lak":96600.0,"stockable":1,"id":"I117"},{"name":"วิปครีมผงหน้าร้าน","code":"ST118","pack":300.0,"thb":43.0,"lak":29670.0,"stockable":1,"id":"I118"},{"name":"นมผง เรดดี้มิลล์","code":"ST119","pack":250.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I119"},{"name":"นมผงฮอกไกโด","code":"ST120","pack":1000.0,"thb":300.0,"lak":207000.0,"stockable":1,"id":"I120"},{"name":"นมผงเดรี่ริช Dairy Rich","code":"ST121","pack":1000.0,"thb":230.0,"lak":158700.0,"stockable":1,"id":"I121"},{"name":"ไซรัปสะตอเบอรี่ติ่งฟง","code":"ST122","pack":750.0,"thb":160.0,"lak":110400.0,"stockable":1,"id":"I122"},{"name":"เบสนมสดฮอกไกโด","code":"ST123","pack":2000.0,"thb":113.0,"lak":77970.0,"stockable":1,"id":"I123"},{"name":"โมจิแบบดูด","code":"ST124","pack":1820.0,"thb":200.0,"lak":138000.0,"stockable":1,"id":"I124"},{"name":"ซอสมิกเบอรี่","code":"ST125","pack":1000.0,"thb":211.0,"lak":145590.0,"stockable":1,"id":"I125"},{"name":"คาราเมลท๊อฟฟี่รังผึ้ง","code":"ST126","pack":500.0,"thb":350.0,"lak":241500.0,"stockable":1,"id":"I126"},{"name":"เนยถั่ว","code":"ST127","pack":454.0,"thb":210.0,"lak":144900.0,"stockable":1,"id":"I127"},{"name":"นมเมจิฝาสีน้ำเงิน","code":"ST128","pack":2000.0,"thb":110.0,"lak":75900.0,"stockable":1,"id":"I128"},{"name":"โยเกริต","code":"ST129","pack":2000.0,"thb":120.0,"lak":82800.0,"stockable":1,"id":"I129"},{"name":"สะตอเบอรี่ฟรีส","code":"ST130","pack":1000.0,"thb":100.0,"lak":69000.0,"stockable":1,"id":"I130"},{"name":"บูเบอรี่ฟรีส","code":"ST131","pack":1000.0,"thb":220.0,"lak":151800.0,"stockable":1,"id":"I131"},{"name":"กีวี่ฟรีส","code":"ST132","pack":1000.0,"thb":100.0,"lak":69000.0,"stockable":1,"id":"I132"},{"name":"มะม่วงฟรีส","code":"ST133","pack":1000.0,"thb":180.0,"lak":124200.0,"stockable":1,"id":"I133"},{"name":"เสาวรสฟรีส","code":"ST134","pack":1000.0,"thb":160.0,"lak":110400.0,"stockable":1,"id":"I134"},{"name":"ไซรับติ่งฟงกีวี่","code":"ST135","pack":760.0,"thb":760.0,"lak":524400.0,"stockable":1,"id":"I135"},{"name":"ไซรับติ่งฟงเสาวรส","code":"ST136","pack":760.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I136"},{"name":"ไซรับติ่งฟงสัปปะรด","code":"ST137","pack":760.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I137"},{"name":"ไซรับติ่งฟงสะตอเบอรี่","code":"ST138","pack":760.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I138"},{"name":"ไซรับติ่งฟงบูเบอรี่","code":"ST139","pack":760.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I139"},{"name":"ไซรับติ่งฟงส้ม","code":"ST140","pack":760.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I140"},{"name":"ไซรับติ่งฟงโยเกริต","code":"ST141","pack":760.0,"thb":100.0,"lak":69000.0,"stockable":1,"id":"I141"},{"name":"ไซรับติ่งฟงพีส","code":"ST142","pack":760.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I142"},{"name":"สาหร่ายสีฟ้า","code":"ST143","pack":50.0,"thb":180.0,"lak":124200.0,"stockable":1,"id":"I143"},{"name":"ไซรับติ่งฟงองุ่นแดง","code":"ST144","pack":760.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I144"},{"name":"ไซรับติ่งฟงมะม่วง","code":"ST145","pack":760.0,"thb":90.0,"lak":62100.0,"stockable":1,"id":"I145"},{"name":"น้ำตาลเบเกรี่","code":"ST146","pack":1000.0,"thb":40.0,"lak":27600.0,"stockable":1,"id":"I146"},{"name":"น้ำตาลบาวซุก้า","code":"ST147","pack":1000.0,"thb":65.0,"lak":44850.0,"stockable":1,"id":"I147"},{"name":"น้ำตาลไอซิ่ง","code":"ST148","pack":1000.0,"thb":50.0,"lak":34500.0,"stockable":1,"id":"I148"},{"name":"เนยผสมสำเร็จรูปรสออริจินอล","code":"ST149","pack":500.0,"thb":95.0,"lak":65550.0,"stockable":1,"id":"I149"},{"name":"เนยผสมสำเร็จรูปรสพริกเผา","code":"ST150","pack":500.0,"thb":110.0,"lak":75900.0,"stockable":1,"id":"I150"},{"name":"คีมชีดตัวใหม่ Donut","code":"ST151","pack":300.0,"thb":95.0,"lak":65550.0,"stockable":1,"id":"I151"},{"name":"ใบชาไทย ขวานKAW Kapak ถุงสีฟ้า","code":"ST152","pack":1000.0,"thb":170.0,"lak":117300.0,"stockable":1,"id":"I152"},{"name":"ใบชาไทย ม้าดาบ","code":"ST153","pack":1000.0,"thb":185.0,"lak":127650.0,"stockable":1,"id":"I153"},{"name":"ใบชาไทย 999","code":"ST154","pack":1000.0,"thb":110.0,"lak":75900.0,"stockable":1,"id":"I154"},{"name":"ใบชาไทย หัวสิง 3 ดาว","code":"ST155","pack":400.0,"thb":110.0,"lak":75900.0,"stockable":1,"id":"I155"},{"name":"ใบชาไทยดอยชาไทย","code":"ST156","pack":500.0,"thb":175.0,"lak":120750.0,"stockable":1,"id":"I156"},{"name":"ใบชาเขียวดอยชาไทย","code":"ST157","pack":500.0,"thb":190.0,"lak":131100.0,"stockable":1,"id":"I157"},{"name":"ใบชาเขียวนม มังกรบิน","code":"ST158","pack":200.0,"thb":70.0,"lak":48300.0,"stockable":1,"id":"I158"},{"name":"ใบชาเขียว หัวเชื้อมังกรบิน","code":"ST159","pack":200.0,"thb":130.0,"lak":89700.0,"stockable":1,"id":"I159"},{"name":"ใบชานม ดอยชาไทย","code":"ST160","pack":500.0,"thb":135.0,"lak":93150.0,"stockable":1,"id":"I160"},{"name":"ใบชานม Tenju Assam","code":"ST161","pack":600.0,"thb":165.0,"lak":113850.0,"stockable":1,"id":"I161"},{"name":"ครีมเทียม Mister save","code":"ST162","pack":1000.0,"thb":71.0,"lak":48990.0,"stockable":1,"id":"I162"},{"name":"นมข้นหวาน ทีพอท","code":"ST163","pack":1000.0,"thb":115.0,"lak":79350.0,"stockable":1,"id":"I163"},{"name":"นมข้นจืด ทีพอท","code":"ST164","pack":1000.0,"thb":53.0,"lak":36570.0,"stockable":1,"id":"I164"},{"name":"โกโก้ Master","code":"ST165","pack":400.0,"thb":150.0,"lak":103500.0,"stockable":1,"id":"I165"},{"name":"แก้ว 16 oz ปาก 98 +ฝา","code":"ST166","pack":1000.0,"thb":3000.0,"lak":2070000.0,"stockable":1,"id":"I166"},{"name":"แก้ว 20 oz ปาก 98 +ฝา","code":"ST167","pack":1000.0,"thb":3250.0,"lak":2242500.0,"stockable":1,"id":"I167"},{"name":"ฝาเปิด ปาก 98","code":"ST168","pack":1000.0,"thb":40.0,"lak":27600.0,"stockable":1,"id":"I168"},{"name":"ช้อนเล็ก","code":"ST169","pack":50.0,"thb":10.0,"lak":6900.0,"stockable":1,"id":"I169"},{"name":"หลอดดูดเล็ก","code":"ST170","pack":250.0,"thb":35.0,"lak":24150.0,"stockable":1,"id":"I170"},{"name":"หลอดดูดใหญ่","code":"ST171","pack":100.0,"thb":35.0,"lak":24150.0,"stockable":1,"id":"I171"},{"name":"ผงมะนาว","code":"ST172","pack":1500.0,"thb":55.0,"lak":37950.0,"stockable":1,"id":"I172"},{"name":"ชาซองแดง","code":"ST173","pack":600.0,"thb":220.0,"lak":151800.0,"stockable":1,"id":"I173"},{"name":"นมMEIJI รสจืด 2Ltr/gallon","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I174","needprice":1},{"name":"แป้งกวนไส้ตราดาว","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I175","needprice":1},{"name":"น้ำส้มซันควิก","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I176","needprice":1},{"name":"เนยเค็ม","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I177","needprice":1},{"name":"ไข่มุก","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I178","needprice":1},{"name":"เจลลี่Brown Sugar","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I179","needprice":1},{"name":"วุ้นน้ำผึ้ง","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I180","needprice":1},{"name":"สะตอเบอรี่ฟรีซ","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I181","needprice":1},{"name":"น้ำมะพร้าวฟรีซ","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I182","needprice":1},{"name":"เนื้อมะพร้าวฟรีซ","code":"","pack":1000,"thb":0,"lak":0,"stockable":1,"id":"I183","needprice":1}],"recipes":[{"name":"เบสิกชาไทย","yield":189.0,"lines":[{"name":"ใบชาไทย ขวานKAW Kapak ถุงสีฟ้า","g":1000.0,"t":"I","ref":"I152"},{"name":"ใบชาไทย ม้าดาบ","g":1000.0,"t":"I","ref":"I153"},{"name":"ใบชาไทย 999","g":1000.0,"t":"I","ref":"I154"},{"name":"ใบชาไทย หัวสิง 3 ดาว","g":800.0,"t":"I","ref":"I155"},{"name":"ใบชาไทยดอยชาไทย","g":500.0,"t":"I","ref":"I156"},{"name":"ชาตรามือถุงแดง","g":800.0,"t":"I","ref":"I008"},{"name":"ครีมเทียม Mister save","g":1116.0,"t":"I","ref":"I162"},{"name":"นมข้นหวาน ทีพอท","g":930.0,"t":"I","ref":"I163"},{"name":"นมข้นจืด ทีพอท","g":3720.0,"t":"I","ref":"I164"},{"name":"แก้ว 20 oz ปาก 98 +ฝา","g":1.0,"t":"I","ref":"I167"},{"name":"หลอดดูดเล็ก","g":1.0,"t":"I","ref":"I170"},{"name":"น้ำ","g":56700.0,"t":"I","ref":"I101"}],"combo":[{"name":"บุกบาวซูก้า","g":45.0,"t":"I","ref":"I067"}],"sell":25000.0,"comboSell":35000.0,"sellL":32000.0,"qf":0.4,"id":"R001"},{"name":"บุกใส","yield":50.0,"lines":[{"name":"บุุกใสเฉากี้ เฉากี้","g":900.0,"t":"I","ref":"I068"},{"name":"วุ้นมะพร้าวใสตราใบเฟริน","g":1800.0,"t":"I","ref":"I069"}],"combo":[],"sell":10000.0,"comboSell":null,"qf":0.4,"id":"R002"},{"name":"สีดาปั่นพิกเกลือ","yield":1.0,"lines":[{"name":"ไซรัปฝรั่งหมากสีดา Nature Teste","g":50.0,"t":"I","ref":"I078"},{"name":"ผงปั่น แบบผลไม้ Long Beach","g":8.0,"t":"I","ref":"I064"},{"name":"หมากสีดา","g":40.0,"t":"I","ref":"I106"},{"name":"ผงบ๊วย","g":10.0,"t":"I","ref":"I103"},{"name":"หมากสีดา","g":20.0,"t":"I","ref":"I106"}],"combo":[],"sell":59000.0,"comboSell":null,"id":"R003"},{"name":"สีดาปั่นพิกเกือบ๊วย","yield":1.0,"lines":[{"name":"ไซรัปฝรั่งหมากสีดา Nature Teste","g":50.0,"t":"I","ref":"I078"},{"name":"ผงปั่น แบบผลไม้ Long Beach","g":8.0,"t":"I","ref":"I064"},{"name":"หมากสีดา","g":40.0,"t":"I","ref":"I106"},{"name":"ผงบ๊วย","g":10.0,"t":"I","ref":"I103"},{"name":"หมากสีดา","g":20.0,"t":"I","ref":"I106"}],"combo":[],"sell":59000.0,"comboSell":null,"id":"R004"},{"name":"สีดาปั่นพิกน้ำตาลปี๊บ","yield":1.0,"lines":[{"name":"ไซรัปฝรั่งหมากสีดา Nature Teste","g":50.0,"t":"I","ref":"I078"},{"name":"ผงปั่น แบบผลไม้ Long Beach","g":8.0,"t":"I","ref":"I064"},{"name":"หมากสีดา","g":40.0,"t":"I","ref":"I106"},{"name":"พิกน้ำตาลปี๊บ","g":10.0,"t":"R","ref":"R015"},{"name":"หมากสีดา","g":20.0,"t":"I","ref":"I106"}],"combo":[],"sell":59000.0,"comboSell":null,"id":"R005"},{"name":"อะงุ่นแดงเคียวโฮปั่น","yield":1.0,"lines":[{"name":"ชาใส","g":80.0,"t":"R","ref":"R052"},{"name":"ไซรัปองุ่นแดงเคียวโฮ Nature Teste","g":25.0,"t":"I","ref":"I080"},{"name":"ไซรัปองุ่นแดงเคียวโฮ Long Beach","g":25.0,"t":"I","ref":"I081"},{"name":"อะงุ่นแดงเคียวโฮ","g":40.0,"t":"I","ref":"I105"},{"name":"ผงปั่น แบบผลไม้ Long Beach","g":10.0,"t":"I","ref":"I064"},{"name":"อะงุ่นไซมัสคัส","g":10.0,"t":"I","ref":"I107"},{"name":"บุกใส","g":40.0,"t":"R","ref":"R002"}],"combo":[],"sell":75000.0,"comboSell":null,"qf":0.4,"id":"R006"},{"name":"บ๊วยโซดาปั่น","yield":1.0,"lines":[{"name":"ซอสบ๊วย","g":70.0,"t":"R","ref":"R085"},{"name":"โซดา","g":40.0,"t":"I","ref":"I072"}],"combo":[],"sell":45000.0,"comboSell":null,"id":"R007"},{"name":"บ๊วยโคล่าปั่น","yield":1.0,"lines":[{"name":"ซอสบ๊วย","g":70.0,"t":"R","ref":"R085"},{"name":"โซดา","g":40.0,"t":"I","ref":"I072"},{"name":"แปปซ๊่","g":10.0,"t":"I","ref":"I073"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R008"},{"name":"ชาไทยปั่น","yield":17.0,"lines":[{"name":"ชาไทย","g":220.0,"t":"R","ref":"R001"},{"name":"นมปะสม","g":60.0,"t":"I","ref":"I110"},{"name":"ผงปั่น แบบนม Long Beach","g":15.0,"t":"I","ref":"I065"}],"combo":[],"sell":50000.0,"comboSell":null,"id":"R009"},{"name":"ชาเขียวมัทฉะปั่น","yield":17.0,"lines":[{"name":"ชาเขียวมัทฉะ","g":220.0,"t":"R","ref":"R047"},{"name":"นมปะสม","g":60.0,"t":"I","ref":"I110"},{"name":"ผงปั่น แบบนม Long Beach","g":15.0,"t":"I","ref":"I065"}],"combo":[],"sell":50000.0,"comboSell":null,"id":"R010"},{"name":"โกโก้ปั่น","yield":1.0,"lines":[{"name":"โกโก้","g":220.0,"t":"R","ref":"R044"},{"name":"นมปะสม","g":60.0,"t":"I","ref":"I110"},{"name":"ผงปั่น แบบนม Long Beach","g":15.0,"t":"I","ref":"I065"}],"combo":[],"sell":50000.0,"comboSell":null,"id":"R011"},{"name":"ชานมปั่น","yield":1.0,"lines":[{"name":"ชานม","g":220.0,"t":"R","ref":"R031"},{"name":"นมปะสม","g":60.0,"t":"I","ref":"I110"},{"name":"ผงปั่น แบบนม Long Beach","g":15.0,"t":"I","ref":"I065"}],"combo":[],"sell":50000.0,"comboSell":null,"id":"R012"},{"name":"พิกเกลือ","yield":17.0,"lines":[{"name":"พริกแดงสด","g":50.0,"t":"I","ref":"I108"},{"name":"น้ำตาลทรายขาว","g":1000.0,"t":"I","ref":"I022"},{"name":"เกลือ","g":100.0,"t":"I","ref":"I042"}],"combo":[],"sell":59000.0,"comboSell":null,"id":"R013"},{"name":"ชานมครีมชีส","yield":1.0,"lines":[{"name":"ชานม","g":220.0,"t":"R","ref":"R031"},{"name":"ครีมชีส","g":60.0,"t":"R","ref":"R022"},{"name":"วาฟเฟิลอบกรอบchocolate","g":2.0,"t":"I","ref":"I056"},{"name":"วาฟเฟิลอบกรอบวนิลา","g":2.0,"t":"I","ref":"I057"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R014"},{"name":"พิกน้ำตาลปี๊บ","yield":100.0,"lines":[{"name":"พริกแดงสด","g":50.0,"t":"I","ref":"I108"},{"name":"น้ำตาลปี๊บ","g":1000.0,"t":"I","ref":"I104"},{"name":"เกลือ","g":100.0,"t":"I","ref":"I042"}],"combo":[],"sell":null,"comboSell":null,"id":"R015"},{"name":"วิปครีมผงหน้าร้าน","yield":8.0,"lines":[{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":40.0,"t":"I","ref":"I028"},{"name":"วิปครีมผงDreamy ถุงสีชมพู","g":100.0,"t":"I","ref":"I029"},{"name":"น้ำ","g":300.0,"t":"I","ref":"I101"}],"combo":[],"sell":null,"comboSell":null,"id":"R016"},{"name":"วิปครีมผงแฟนชาย","yield":1.0,"lines":[{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":500.0,"t":"I","ref":"I028"},{"name":"วิปครีมผงDreamy ถุงสีชมพู","g":500.0,"t":"I","ref":"I029"},{"name":"น้ำ","g":1500.0,"t":"I","ref":"I101"}],"combo":[],"sell":240000.0,"comboSell":null,"id":"R017"},{"name":"ชาไทยใส่คำ","yield":1.0,"lines":[{"name":"ชาไทย","g":220.0,"t":"R","ref":"R001"},{"name":"นมปะสม","g":60.0,"t":"I","ref":"I110"},{"name":"ผงปั่น แบบผลไม้ Long Beach","g":15.0,"t":"I","ref":"I064"},{"name":"วิปครีมผงหน้าร้าน","g":60.0,"t":"R","ref":"R016"},{"name":"ฝอยทอง","g":15.0,"t":"I","ref":"I097"}],"combo":[],"sell":65000.0,"comboSell":null,"id":"R018"},{"name":"ชาไทยครีมชีส","yield":1.0,"lines":[{"name":"ชาไทย","g":220.0,"t":"R","ref":"R001"},{"name":"ครีมชีส","g":60.0,"t":"R","ref":"R022"},{"name":"วาฟเฟิลอบกรอบchocolate","g":1.0,"t":"I","ref":"I056"},{"name":"วาฟเฟิลอบกรอบวนิลา","g":1.0,"t":"I","ref":"I057"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R019"},{"name":"ชาเขียวครีมชีส","yield":1.0,"lines":[{"name":"ชาเขียว","g":220.0,"t":"R","ref":"R047"},{"name":"ครีมชีส","g":60.0,"t":"R","ref":"R022"},{"name":"วาฟเฟิลอบกรอบchocolate","g":2.0,"t":"I","ref":"I056"},{"name":"วาฟเฟิลอบกรอบวนิลา","g":2.0,"t":"I","ref":"I057"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R020"},{"name":"โกโก้ครีมชีส","yield":1.0,"lines":[{"name":"โกโก้","g":200.0,"t":"R","ref":"R044"},{"name":"ครีมชีส","g":60.0,"t":"R","ref":"R022"},{"name":"วาฟเฟิลอบกรอบchocolate","g":2.0,"t":"I","ref":"I056"},{"name":"วาฟเฟิลอบกรอบวนิลา","g":2.0,"t":"I","ref":"I057"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R021"},{"name":"ครีมชีส","yield":45.0,"lines":[{"name":"ครีมชีส ดีวัน","g":450.0,"t":"I","ref":"I025"},{"name":"ครีมชีส Dreamy","g":400.0,"t":"I","ref":"I024"},{"name":"วิปครีมผงDreamy ถุงสีชมพู","g":120.0,"t":"I","ref":"I029"},{"name":"น้ำ","g":1500.0,"t":"I","ref":"I101"}],"combo":[],"sell":15000.0,"comboSell":null,"id":"R022"},{"name":"ครีมชีสแฟนชาย","yield":1.0,"lines":[{"name":"ครีมชีส ดีวัน","g":450.0,"t":"I","ref":"I025"},{"name":"ครีมชีส Dreamy","g":400.0,"t":"I","ref":"I024"},{"name":"วิปครีมผงDreamy ถุงสีชมพู","g":120.0,"t":"I","ref":"I029"},{"name":"น้ำ","g":1500.0,"t":"I","ref":"I101"}],"combo":[],"sell":300000.0,"comboSell":null,"id":"R023"},{"name":"กระเจี๊ยบเลม่อน","yield":1.0,"lines":[{"name":"ชาใส","g":220.0,"t":"R","ref":"R052"},{"name":"ไซรัปกะเจี๊ยบ Long Beach","g":16.0,"t":"I","ref":"I084"},{"name":"ไซรัปเลม่อน Nature Teste","g":8.0,"t":"I","ref":"I077"}],"combo":[{"name":"วุ้นน้ำผึ้ง","g":45.0,"t":"I","ref":"I180"}],"sell":35000.0,"comboSell":null,"id":"R024"},{"name":"ซอสส้มเลม่อน","yield":40.0,"lines":[{"name":"ส้มฟรีซ","g":3000.0,"t":"I","ref":"I091"},{"name":"เนื้อเลม่อนเชื่อม","g":1000.0,"t":"I","ref":"I074"}],"combo":[],"sell":55000.0,"comboSell":null,"id":"R025"},{"name":"ชาส้มเลม่อน","yield":1.0,"lines":[{"name":"ชาใส","g":150.0,"t":"R","ref":"R052"},{"name":"ไซรัปส้มยูสุ Nature Teste","g":10.0,"t":"I","ref":"I076"},{"name":"ไซรัปเลม่อน Nature Teste","g":10.0,"t":"I","ref":"I077"},{"name":"ไซรัปผึ้งยิ้ม","g":10.0,"t":"I","ref":"I075"}],"combo":[{"name":"ซอสส้มเลม่อน","g":45.0,"t":"R","ref":"R025"},{"name":"บุกใส","g":40.0,"t":"R","ref":"R002"}],"sell":39000.0,"comboSell":null,"id":"R026"},{"name":"นมปะสมหน้าร้าน","yield":40.0,"lines":[{"name":"นมข้นจืดคาร์เนชั่น","g":1000.0,"t":"I","ref":"I020"},{"name":"นมข้นหวานคาร์เนชั่น","g":1000.0,"t":"I","ref":"I019"}],"combo":[],"sell":null,"comboSell":null,"id":"R027"},{"name":"นมปะสมแฟนชาย","yield":1.0,"lines":[{"name":"นมข้นจืดคาร์เนชั่น","g":1000.0,"t":"I","ref":"I020"},{"name":"นมข้นหวานคาร์เนชั่น","g":1000.0,"t":"I","ref":"I019"}],"combo":[],"sell":150000.0,"comboSell":null,"id":"R028"},{"name":"เบสนมสดฮอกไกโด","yield":10.0,"lines":[{"name":"นมผง เรดดี้มิลล์","g":200.0,"t":"I","ref":"I119"},{"name":"นมผงฮอกไกโด","g":14.0,"t":"I","ref":"I120"},{"name":"นมผงเดรี่ริช Dairy Rich","g":35.0,"t":"I","ref":"I121"},{"name":"นมผง Dreamy Milky Cream","g":35.0,"t":"I","ref":"I018"},{"name":"วิปครีมแบบน้ำ Millac Gold (สำรอง)","g":30.0,"t":"I","ref":"I027"},{"name":"น้ำ","g":2000.0,"t":"I","ref":"I101"}],"combo":[],"sell":null,"comboSell":null,"id":"R029"},{"name":"ซอสStrawberry","yield":50.0,"lines":[{"name":"สะตอเบอรี่ฟรีซ","g":1000.0,"t":"I","ref":"I181"},{"name":"ไซรัปสะตอเบอรี่ติ่งฟง","g":21.0,"t":"I","ref":"I122"}],"combo":[],"sell":null,"comboSell":null,"id":"R030"},{"name":"เบสิกชานม","yield":25.0,"lines":[{"name":"ชาหอมหมืนลี้","g":20.0,"t":"I","ref":"I001"},{"name":"ชาอัสสัมไต้หวันซินเต๋อ","g":60.0,"t":"I","ref":"I003"},{"name":"ชาซีลอน NL Coffee","g":60.0,"t":"I","ref":"I004"},{"name":"ชาซองแดง","g":20.0,"t":"I","ref":"I173"},{"name":"น้ำตาลทรายแดง","g":320.0,"t":"I","ref":"I023"},{"name":"ครีมเทียม Coffee Dreamy","g":260.0,"t":"I","ref":"I021"},{"name":"นมข้นจืดคาร์เนชั่น","g":800.0,"t":"I","ref":"I020"},{"name":"นมข้นหวานคาร์เนชั่น","g":505.0,"t":"I","ref":"I019"},{"name":"น้ำ","g":5000.0,"t":"I","ref":"I101"}],"combo":[{"name":"ไข่มุก","g":0.0,"t":"I","ref":"I178"},{"name":"บุกบาวซูก้า","g":25.0,"t":"I","ref":"I067"}],"sell":40000.0,"comboSell":null,"id":"R031"},{"name":"ชานมแฟนชาย","yield":1.0,"lines":[{"name":"ชาหอมหมืนลี้","g":20.0,"t":"I","ref":"I001"},{"name":"ชาอัสสัมไต้หวันซินเต๋อ","g":60.0,"t":"I","ref":"I003"},{"name":"ชาซีลอน NL Coffee","g":60.0,"t":"I","ref":"I004"},{"name":"ชาถุงแดง","g":20.0,"t":"I","ref":"I008"},{"name":"น้ำตาลทรายแดง","g":320.0,"t":"I","ref":"I023"},{"name":"ครีมเทียม Coffee Dreamy","g":260.0,"t":"I","ref":"I021"},{"name":"นมข้นจืดคาร์เนชั่น","g":800.0,"t":"I","ref":"I020"},{"name":"นมข้นหวานคาร์เนชั่น","g":505.0,"t":"I","ref":"I019"},{"name":"น้ำ","g":5000.0,"t":"I","ref":"I101"}],"combo":[],"sell":500000.0,"comboSell":null,"id":"R032"},{"name":"ชานมชมเชย","yield":1.0,"lines":[{"name":"ชานม","g":220.0,"t":"R","ref":"R031"},{"name":"บุกบาวซูก้า","g":45.0,"t":"I","ref":"I067"},{"name":"ข้าวจี่","g":100.0,"t":"I","ref":"I100"},{"name":"สังขยาchocolate","g":50.0,"t":"R","ref":"R038"}],"combo":[],"sell":69000.0,"comboSell":null,"id":"R033"},{"name":"นมสดฮอกไกโด","yield":1.0,"lines":[{"name":"เบสนมสดฮอกไกโด","g":150.0,"t":"R","ref":"R029"},{"name":"ซอสStrawberry","g":85.0,"t":"R","ref":"R030"},{"name":"นมผสม","g":38.0,"t":"R","ref":"R027"}],"combo":[],"sell":55000.0,"comboSell":null,"id":"R034"},{"name":"ไส้ส้ม","yield":1,"lines":[{"name":"น้ำส้มซันควิก","g":65.0,"t":"I","ref":"I176"},{"name":"น้ำตาลทรายขาว","g":40.0,"t":"I","ref":"I022"},{"name":"แป้งกวนไส้ตราดาว","g":20.0,"t":"I","ref":"I175"},{"name":"เนยเค็ม","g":25.0,"t":"I","ref":"I177"},{"name":"น้ำ","g":200.0,"t":"I","ref":"I101"}],"combo":[],"sell":null,"comboSell":null,"id":"R035"},{"name":"สังขยานมฮอกไกโด","yield":40.0,"lines":[{"name":"แป้งข้าวโพด","g":60.0,"t":"I","ref":"I032"},{"name":"นมผงDreamy Milky Cream","g":30.0,"t":"I","ref":"I018"},{"name":"น้ำตาลทรายขาว","g":100.0,"t":"I","ref":"I022"},{"name":"วิปครีม","g":25.0,"t":"I","ref":"I026"},{"name":"นมMEIJI รสจืด 2Ltr/gallon","g":500.0,"t":"I","ref":"I174"},{"name":"นมข้นจืดคาร์เนชั่น","g":300.0,"t":"I","ref":"I020"},{"name":"นมผงฮอกไกโด","g":40.0,"t":"I","ref":"I120"},{"name":"นมผมเดรี่ริช Dairy Rich","g":30.0,"t":"I","ref":"I121"}],"combo":[],"sell":null,"comboSell":null,"id":"R036"},{"name":"สังขยามะพร้าว","yield":40.0,"lines":[{"name":"น้ำมะพร้าวฟรีซ","g":200.0,"t":"I","ref":"I182"},{"name":"เนื้อมะพร้าวฟรีซ","g":200.0,"t":"I","ref":"I183"},{"name":"น้ำตาลทรายขาว","g":40.0,"t":"I","ref":"I022"},{"name":"นมMEIJI รสจืด 2Ltr/gallon","g":100.0,"t":"I","ref":"I174"},{"name":"แป้งกวนไส้ตราดาว","g":30.0,"t":"I","ref":"I175"},{"name":"กระทิสด","g":15.0,"t":"I","ref":"I031"},{"name":"วิปครีม","g":150.0,"t":"I","ref":"I026"}],"combo":[],"sell":null,"comboSell":null,"id":"R037"},{"name":"สังขยาChocolate","yield":30.0,"lines":[{"name":"น้ำโกโก้","g":1100.0,"t":"R","ref":"R044"},{"name":"นมข้นหวานคาร์เนชั่น","g":50.0,"t":"I","ref":"I019"},{"name":"แป้งข้าวโพด","g":70.0,"t":"I","ref":"I032"},{"name":"วิปครีมแบบน้ำ Risso","g":150.0,"t":"I","ref":"I026"}],"combo":[],"sell":15000.0,"comboSell":null,"id":"R038"},{"name":"สังขยาchocolateแฟนชาย","yield":1.0,"lines":[{"name":"น้ำโกโก้","g":1100.0,"t":"R","ref":"R044"},{"name":"นมข้นหวานคาร์เนชั่น","g":50.0,"t":"I","ref":"I019"},{"name":"แป้งข้าวโพด","g":70.0,"t":"I","ref":"I032"},{"name":"วิปครีมแบบน้ำ Risso","g":150.0,"t":"I","ref":"I026"}],"combo":[],"sell":200000.0,"comboSell":null,"id":"R039"},{"name":"สังขยาชาเขียว","yield":30.0,"lines":[{"name":"ชาเขียวมัทฉะ","g":1100.0,"t":"R","ref":"R047"},{"name":"นมข้นหวานคาร์เนชั่น","g":100.0,"t":"I","ref":"I019"},{"name":"ผงมัทฉะมังกรบิน","g":7.0,"t":"I","ref":"I033"},{"name":"วิปครีมแบบน้ำ Risso","g":150.0,"t":"I","ref":"I026"},{"name":"แป้งข้าวโพด","g":70.0,"t":"I","ref":"I032"}],"combo":[],"sell":15000.0,"comboSell":null,"id":"R040"},{"name":"สังขยาชาเขียวแฟนชาย","yield":1.0,"lines":[{"name":"ชาเขียวมัทฉะ","g":1100.0,"t":"R","ref":"R047"},{"name":"นมข้นหวานคาร์เนชั่น","g":100.0,"t":"I","ref":"I019"},{"name":"ผงมัทฉะมังกรบิน","g":7.0,"t":"I","ref":"I033"},{"name":"วิปครีมแบบน้ำ Risso","g":150.0,"t":"I","ref":"I026"},{"name":"แป้งข้าวโพด","g":70.0,"t":"I","ref":"I032"}],"combo":[],"sell":200000.0,"comboSell":null,"id":"R041"},{"name":"สังขยาชาไทย","yield":30.0,"lines":[{"name":"ชาไทย","g":1100.0,"t":"R","ref":"R001"},{"name":"กระทิผง","g":150.0,"t":"I","ref":"I030"},{"name":"ไข่ไก่เบอร์ 0","g":6.0,"t":"I","ref":"I099"},{"name":"แป้งข้าวโพด","g":70.0,"t":"I","ref":"I032"},{"name":"นมข้นหวานคาร์เนชั่น","g":100.0,"t":"I","ref":"I019"},{"name":"กระทิแบบน้ำ","g":150.0,"t":"I","ref":"I031"}],"combo":[],"sell":15000.0,"comboSell":null,"id":"R042"},{"name":"สังขยาชาไทยแฟนชาย","yield":1.0,"lines":[{"name":"ชาไทย","g":1100.0,"t":"R","ref":"R001"},{"name":"กระทิผง","g":150.0,"t":"I","ref":"I030"},{"name":"ไข่ไก่เบอร์ 0","g":6.0,"t":"I","ref":"I099"},{"name":"แป้งข้าวโพด","g":70.0,"t":"I","ref":"I032"},{"name":"นมข้นหวานคาร์เนชั่น","g":100.0,"t":"I","ref":"I019"},{"name":"กระทิแบบน้ำ","g":150.0,"t":"I","ref":"I031"}],"combo":[],"sell":200000.0,"comboSell":null,"id":"R043"},{"name":"โกโก้","yield":1.0,"lines":[{"name":"ผงโกโก้ ตราทิวลิป","g":11.0,"t":"I","ref":"I016"},{"name":"โกโก้ Master","g":11.0,"t":"I","ref":"I165"},{"name":"ครีมเทียม Mister save","g":11.0,"t":"I","ref":"I162"},{"name":"นมข้นหวาน ทีพอท","g":40.0,"t":"I","ref":"I163"},{"name":"นมข้นจืด ทีพอท","g":40.0,"t":"I","ref":"I164"},{"name":"น้ำ","g":250.0,"t":"I","ref":"I101"},{"name":"แก้ว 20 oz ปาก 98 +ฝา","g":1.0,"t":"I","ref":"I167"}],"combo":[{"name":"บุกบาวซูก้า","g":45.0,"t":"I","ref":"I067"}],"sell":29000.0,"comboSell":39000.0,"sellL":35000.0,"qf":0.4,"id":"R044"},{"name":"โกโก้แฟนชาย","yield":1.0,"lines":[{"name":"ผงโกโก้ ตราทิวลิป","g":450.0,"t":"I","ref":"I016"},{"name":"ผงโกโก้ Dreammy","g":300.0,"t":"I","ref":"I017"},{"name":"นมข้นหวานคาร์เนชั่น","g":2650.0,"t":"I","ref":"I019"},{"name":"นมข้นจืดคาร์เนชั่น","g":1200.0,"t":"I","ref":"I020"},{"name":"นมผง Dreamy Milky Cream","g":600.0,"t":"I","ref":"I018"},{"name":"น้ำ","g":9000.0,"t":"I","ref":"I101"}],"combo":[],"sell":700000.0,"comboSell":null,"id":"R045"},{"name":"โกโก้โอมายก้อด","yield":1.0,"lines":[{"name":"โกโก้","g":220.0,"t":"R","ref":"R044"},{"name":"บุกบาวซูก้า","g":45.0,"t":"I","ref":"I067"},{"name":"ข้าวจี่","g":100.0,"t":"I","ref":"I100"},{"name":"สังขยาChocolate","g":50.0,"t":"R","ref":"R038"}],"combo":[],"sell":69000.0,"comboSell":null,"id":"R046"},{"name":"เบสิกชาเขียวมัทฉะ","yield":93.0,"lines":[{"name":"ใบชาเขียวดอยชาไทย","g":500.0,"t":"I","ref":"I157"},{"name":"ใบชาเขียวนม มังกรบิน","g":1200.0,"t":"I","ref":"I158"},{"name":"ใบชาเขียว หัวเชื้อมังกรบิน","g":50.0,"t":"I","ref":"I159"},{"name":"ใบชาเขียว ช้างทอง","g":800.0,"t":"I","ref":"I014"},{"name":"ครีมเทียม Mister save","g":1116.0,"t":"I","ref":"I162"},{"name":"นมข้นหวาน ทีพอท","g":930.0,"t":"I","ref":"I163"},{"name":"นมข้นจืด ทีพอท","g":3720.0,"t":"I","ref":"I164"},{"name":"น้ำ","g":24800.0,"t":"I","ref":"I101"},{"name":"แก้ว 20 oz ปาก 98 +ฝา","g":1.0,"t":"I","ref":"I167"},{"name":"หลอดดูดเล็ก","g":1.0,"t":"I","ref":"I170"}],"combo":[{"name":"บุกบาวซูก้า","g":45.0,"t":"I","ref":"I067"}],"sell":29000.0,"comboSell":39000.0,"sellL":35000.0,"qf":0.4,"id":"R047"},{"name":"ชาเขียวมัทฉะแฟนชาย","yield":1.0,"lines":[{"name":"ใบชาเขียว รินชา","g":385.0,"t":"I","ref":"I012"},{"name":"ใบชาเขียว ตรามือ","g":385.0,"t":"I","ref":"I013"},{"name":"ใบชาเขียว ช้างทอง","g":385.0,"t":"I","ref":"I014"},{"name":"มังกรบินเขียว","g":165.0,"t":"I","ref":"I015"},{"name":"นมผง Dreamy Milky Cream","g":990.0,"t":"I","ref":"I018"},{"name":"น้ำตาลทรายขาว","g":440.0,"t":"I","ref":"I022"},{"name":"นมข้นหวานคาร์เนชั่น","g":1440.0,"t":"I","ref":"I019"},{"name":"นมข้นจืดคาร์เนชั่น","g":1210.0,"t":"I","ref":"I020"},{"name":"น้ำ","g":11000.0,"t":"I","ref":"I101"}],"combo":[],"sell":900000.0,"comboSell":null,"id":"R048"},{"name":"ชาเขียวเหนี่ยวรัก","yield":1.0,"lines":[{"name":"ชาเขียวมัทฉะ","g":220.0,"t":"R","ref":"R047"},{"name":"บุกบาวซูก้า","g":45.0,"t":"I","ref":"I067"},{"name":"ข้าวจี่","g":100.0,"t":"I","ref":"I100"},{"name":"สังขยาชาเขียว","g":50.0,"t":"R","ref":"R040"}],"combo":[],"sell":69000.0,"comboSell":null,"id":"R049"},{"name":"ชาไทยแฟนชาย","yield":1.0,"lines":[{"name":"ชาอินโด wanjai","g":300.0,"t":"I","ref":"I007"},{"name":"ชาใต้อินทรีแดง","g":300.0,"t":"I","ref":"I011"},{"name":"ชาตรามือถุงแดง","g":600.0,"t":"I","ref":"I008"},{"name":"ชาแดง ตรามังกรบินถุงสีส้ม","g":300.0,"t":"I","ref":"I009"},{"name":"ชามาเล ตราม้าบิน","g":300.0,"t":"I","ref":"I010"},{"name":"นมผง Dreamy Milky Cream","g":600.0,"t":"I","ref":"I018"},{"name":"น้ำตาลทรายขาว","g":400.0,"t":"I","ref":"I022"},{"name":"นมข้นจืดคาร์เนชั่น","g":1200.0,"t":"I","ref":"I020"},{"name":"นมข้นหวานคาร์เนชั่น","g":1300.0,"t":"I","ref":"I019"},{"name":"น้ำ","g":13000.0,"t":"I","ref":"I101"}],"combo":[],"sell":700000.0,"comboSell":null,"id":"R050"},{"name":"ชาไทยสะบายดี","yield":1.0,"lines":[{"name":"ชาไทย","g":250.0,"t":"R","ref":"R001"},{"name":"ข้าวจี่","g":100.0,"t":"I","ref":"I100"},{"name":"บุกบาวซูก้า","g":45.0,"t":"I","ref":"I067"},{"name":"สังขยาชาไทย","g":50.0,"t":"R","ref":"R042"}],"combo":[],"sell":79000.0,"comboSell":null,"id":"R051"},{"name":"ชาใส","yield":20.0,"lines":[{"name":"ชาถุงเขียว","g":30.0,"t":"I","ref":"I002"},{"name":"ชาหอมหมืนลี้","g":25.0,"t":"I","ref":"I001"},{"name":"น้ำ","g":5200.0,"t":"I","ref":"I101"}],"combo":[],"sell":29000.0,"comboSell":null,"id":"R052"},{"name":"ชาบ๊วยเลม่อน","yield":1.0,"lines":[{"name":"ชาใส","g":150.0,"t":"R","ref":"R052"},{"name":"ซอสบ๊วย","g":40.0,"t":"R","ref":"R085"},{"name":"ไซรัปเลม่อน Nature Teste","g":10.0,"t":"I","ref":"I077"}],"combo":[{"name":"บุกใส","g":45.0,"t":"R","ref":"R002"}],"sell":39000.0,"comboSell":null,"id":"R053"},{"name":"กาแฟตาค้าง","yield":25.0,"lines":[{"name":"ชาหอมหมืนลี้","g":50.0,"t":"I","ref":"I001"},{"name":"กาแฟโบรานมังกรบินถุงสีฟ้า","g":625.0,"t":"I","ref":"I006"},{"name":"ชาซีลอน ตราสุนัขตำรวจ","g":75.0,"t":"I","ref":"I005"},{"name":"น้ำตาลทรายแดง","g":200.0,"t":"I","ref":"I023"},{"name":"น้ำตาลทรายขาว","g":200.0,"t":"I","ref":"I022"},{"name":"น้ำ","g":6250.0,"t":"I","ref":"I101"}],"combo":[{"name":"บุกบาวซูก้า","g":45.0,"t":"I","ref":"I067"}],"sell":39000.0,"comboSell":null,"id":"R054"},{"name":"กาแฟตาค้างแฟนชาย","yield":1.0,"lines":[{"name":"ชาหอมหมืนลี้","g":50.0,"t":"I","ref":"I001"},{"name":"กาแฟโบรานมังกรบินถุงสีฟ้า","g":625.0,"t":"I","ref":"I006"},{"name":"ชาซีลอน ตราสุนัขตำรวจ","g":75.0,"t":"I","ref":"I005"},{"name":"น้ำตาลทรายแดง","g":200.0,"t":"I","ref":"I023"},{"name":"น้ำตาลทรายขาว","g":200.0,"t":"I","ref":"I022"},{"name":"น้ำ","g":6250.0,"t":"I","ref":"I101"}],"combo":[],"sell":350000.0,"comboSell":null,"id":"R055"},{"name":"วิปคีมชาเขียว","yield":1.0,"lines":[{"name":"ชาเขียวมัทฉะ","g":220.0,"t":"R","ref":"R047"},{"name":"นมปะสม","g":60.0,"t":"I","ref":"I110"},{"name":"ผงปั่น แบบนม Long Beach","g":15.0,"t":"I","ref":"I065"},{"name":"วิปครีมผงหน้าร้าน","g":60.0,"t":"R","ref":"R016"},{"name":"ฝอยเขียว","g":15.0,"t":"I","ref":"I098"}],"combo":[],"sell":65000.0,"comboSell":null,"id":"R056"},{"name":"วิปคีมชานม","yield":1.0,"lines":[{"name":"ชานม","g":220.0,"t":"R","ref":"R031"},{"name":"นมปะสม","g":60.0,"t":"I","ref":"I110"},{"name":"ผงปั่น แบบนม Long Beach","g":15.0,"t":"I","ref":"I065"},{"name":"วิปครีมผงหน้าร้าน","g":60.0,"t":"R","ref":"R016"},{"name":"คุ๊กกี้บดรสวนิลา","g":15.0,"t":"I","ref":"I052"}],"combo":[],"sell":65000.0,"comboSell":null,"id":"R057"},{"name":"วิปคีมโกโก้","yield":1.0,"lines":[{"name":"โกโก้","g":220.0,"t":"R","ref":"R044"},{"name":"นมปะสม","g":50.0,"t":"I","ref":"I110"},{"name":"ผงปั่น แบบนม Long Beach","g":15.0,"t":"I","ref":"I065"},{"name":"วิปครีมผงหน้าร้าน","g":60.0,"t":"R","ref":"R016"},{"name":"คุ๊กกี้บดรสchocolate","g":15.0,"t":"I","ref":"I053"}],"combo":[],"sell":65000.0,"comboSell":null,"id":"R058"},{"name":"ชีสพ่นไฟชาไทย","yield":1.0,"lines":[{"name":"ชาไทย","g":220.0,"t":"R","ref":"R001"},{"name":"วิปครีมผงหน้าร้าน","g":60.0,"t":"R","ref":"R016"},{"name":"ชีดเส้นขูด","g":20.0,"t":"I","ref":"I096"}],"combo":[],"sell":69000.0,"comboSell":null,"id":"R059"},{"name":"ชีสพ่นไฟชาเขียว","yield":1.0,"lines":[{"name":"ชาเขียวมัทฉะ","g":220.0,"t":"R","ref":"R047"},{"name":"วิปครีมผงหน้าร้าน","g":60.0,"t":"R","ref":"R016"},{"name":"ชีดเส้นขูด","g":20.0,"t":"I","ref":"I096"}],"combo":[],"sell":69000.0,"comboSell":null,"id":"R060"},{"name":"ชีสพ่นไฟชานม","yield":1.0,"lines":[{"name":"ชานม","g":220.0,"t":"R","ref":"R031"},{"name":"วิปครีมผงหน้าร้าน","g":60.0,"t":"R","ref":"R016"},{"name":"ชีดเส้นขูด","g":20.0,"t":"I","ref":"I096"}],"combo":[],"sell":69000.0,"comboSell":null,"id":"R061"},{"name":"ชีสพ่นไฟโกโก้","yield":1.0,"lines":[{"name":"โกโก้","g":220.0,"t":"R","ref":"R044"},{"name":"วิปครีมผงหน้าร้าน","g":60.0,"t":"R","ref":"R016"},{"name":"ชีดเส้นขูด","g":20.0,"t":"I","ref":"I096"}],"combo":[],"sell":69000.0,"comboSell":null,"id":"R062"},{"name":"โมจิชาไทย","yield":1.0,"lines":[{"name":"ชาไทย","g":220.0,"t":"R","ref":"R001"},{"name":"โมจิแบบดูด","g":30.0,"t":"R","ref":"R081"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R063"},{"name":"โมจิชาเขียว","yield":1.0,"lines":[{"name":"ชาเขียวมัทฉะ","g":220.0,"t":"R","ref":"R047"},{"name":"โมจิแบบดูด","g":30.0,"t":"R","ref":"R081"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R064"},{"name":"โมจิชานม","yield":1.0,"lines":[{"name":"ชานม","g":220.0,"t":"R","ref":"R031"},{"name":"โมจิแบบดูด","g":30.0,"t":"R","ref":"R081"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R065"},{"name":"โมจิโกโก้","yield":1.0,"lines":[{"name":"โกโก้","g":220.0,"t":"R","ref":"R044"},{"name":"โมจิแบบดูด","g":30.0,"t":"R","ref":"R081"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R066"},{"name":"เผือกนมฮอกไกโด","yield":1.0,"lines":[{"name":"ผงเผือก","g":10.0,"t":"I","ref":"I062"},{"name":"นมผง Dreamy Milky Cream","g":10.0,"t":"I","ref":"I018"},{"name":"ครีมเทียม Coffee Dreamy","g":10.0,"t":"I","ref":"I021"},{"name":"นมปะสม","g":30.0,"t":"I","ref":"I110"},{"name":"น้ำ","g":100.0,"t":"I","ref":"I101"}],"combo":[],"sell":39000.0,"comboSell":null,"id":"R067"},{"name":"เผือกโมจิ","yield":1.0,"lines":[{"name":"ผงเผือก","g":20.0,"t":"I","ref":"I062"},{"name":"นมผง Dreamy Milky Cream","g":20.0,"t":"I","ref":"I018"},{"name":"ครีมเทียม Coffee Dreamy","g":20.0,"t":"I","ref":"I021"},{"name":"นมปะสม","g":30.0,"t":"I","ref":"I110"},{"name":"น้ำ","g":100.0,"t":"I","ref":"I101"},{"name":"โมจิแบบดูด","g":50.0,"t":"R","ref":"R081"}],"combo":[],"sell":55000.0,"comboSell":null,"id":"R068"},{"name":"ชาพีส","yield":1.0,"lines":[{"name":"ชาใส","g":150.0,"t":"R","ref":"R052"},{"name":"ไซรัปพีส Nature Teste","g":20.0,"t":"I","ref":"I082"},{"name":"ไซรัปพีส Long Beach","g":20.0,"t":"I","ref":"I083"},{"name":"ไซรัปเลม่อน Nature Teste","g":20.0,"t":"I","ref":"I077"},{"name":"พีสฟรีซ","g":20.0,"t":"I","ref":"I092"},{"name":"บุกใส","g":15.0,"t":"R","ref":"R002"}],"combo":[],"sell":55000.0,"comboSell":null,"id":"R069"},{"name":"ชาเลม่อน","yield":1.0,"lines":[{"name":"ผงชาเลม่อน","g":20.0,"t":"I","ref":"I063"},{"name":"น้ำ","g":150.0,"t":"I","ref":"I101"}],"combo":[{"name":"เจลลี่Brown Sugar","g":45.0,"t":"I","ref":"I179"}],"sell":39000.0,"comboSell":null,"id":"R070"},{"name":"ชามิกเบอรี่","yield":1.0,"lines":[{"name":"ชาใส","g":150.0,"t":"R","ref":"R052"},{"name":"ไซรัปละลายเร็ว","g":10.0,"t":"I","ref":"I086"},{"name":"ไซรัปมิกเบอรี่ Nature Teste","g":20.0,"t":"I","ref":"I085"},{"name":"ไซรัปเลม่อน Nature Teste","g":20.0,"t":"I","ref":"I077"},{"name":"ซอสมิกเบอรี่","g":20.0,"t":"R","ref":"R086"},{"name":"บุกใส","g":15.0,"t":"R","ref":"R002"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R071"},{"name":"เผือกกวน","yield":40.0,"lines":[{"name":"เผือกกวน","g":1000.0,"t":"R","ref":"R072"},{"name":"มันม่วงกวน","g":30.0,"t":"I","ref":"I095"}],"combo":[],"sell":10000.0,"comboSell":null,"id":"R072"},{"name":"แป้งโมจิ","yield":2.0,"lines":[{"name":"แป้งเค้กตรามงกุดม่วง","g":70.0,"t":"I","ref":"I036"},{"name":"แป้งมันตราปลาไทย","g":150.0,"t":"I","ref":"I035"},{"name":"แป้งข้าวเหนียว ตราใบหยก","g":150.0,"t":"I","ref":"I034"},{"name":"แป้งไดฟูกุ ตรา เชฟใหญ่","g":1250.0,"t":"I","ref":"I038"},{"name":"แป้งไดฟูกุสะตอเบอรี่ ตรา Koon","g":800.0,"t":"I","ref":"I037"},{"name":"เนยขาว","g":300.0,"t":"I","ref":"I039"},{"name":"เกลือ","g":10.0,"t":"I","ref":"I042"},{"name":"แบ๊ะแซ","g":3000.0,"t":"I","ref":"I040"},{"name":"น้ำ","g":3150.0,"t":"I","ref":"I101"}],"combo":[],"sell":550000.0,"comboSell":null,"id":"R073"},{"name":"คีมชีดออริจินอล","yield":1.0,"lines":[{"name":"วิปครีมแบบก้อน อิมพีเรียล","g":1000.0,"t":"I","ref":"I045"},{"name":"นมข้นหวานคาร์เนชั่น","g":300.0,"t":"I","ref":"I019"},{"name":"วิปครีมแบบน้ำ Risso","g":100.0,"t":"I","ref":"I026"},{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":50.0,"t":"I","ref":"I028"}],"combo":[],"sell":400000.0,"comboSell":null,"id":"R074"},{"name":"คีมชีดสะตอเบอรี่","yield":1.0,"lines":[{"name":"วิปครีมแบบก้อน อิมพีเรียล","g":1000.0,"t":"I","ref":"I045"},{"name":"นมข้นหวานคาร์เนชั่น","g":300.0,"t":"I","ref":"I019"},{"name":"วิปครีมแบบน้ำ Risso","g":100.0,"t":"I","ref":"I026"},{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":50.0,"t":"I","ref":"I028"},{"name":"ผงสะตอเบอรี่","g":40.0,"t":"I","ref":"I046"}],"combo":[],"sell":400000.0,"comboSell":null,"id":"R075"},{"name":"คีมชีดบูเบอรี่","yield":1.0,"lines":[{"name":"วิปครีมแบบก้อน อิมพีเรียล","g":1000.0,"t":"I","ref":"I045"},{"name":"นมข้นหวานคาร์เนชั่น","g":300.0,"t":"I","ref":"I019"},{"name":"วิปครีมแบบน้ำ Risso","g":100.0,"t":"I","ref":"I026"},{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":50.0,"t":"I","ref":"I028"},{"name":"ผงบูเบอรี่","g":40.0,"t":"I","ref":"I047"}],"combo":[],"sell":400000.0,"comboSell":null,"id":"R076"},{"name":"คีมชีดอะงุ่นไซมัสคัส","yield":1.0,"lines":[{"name":"วิปครีมแบบก้อน อิมพีเรียล","g":1000.0,"t":"I","ref":"I045"},{"name":"นมข้นหวานคาร์เนชั่น","g":300.0,"t":"I","ref":"I019"},{"name":"วิปครีมแบบน้ำ Risso","g":100.0,"t":"I","ref":"I026"},{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":50.0,"t":"I","ref":"I028"},{"name":"ไซรัปองุ่นเขียวไซมัสคัส Nature Teste","g":100.0,"t":"I","ref":"I079"}],"combo":[],"sell":550000.0,"comboSell":null,"id":"R077"},{"name":"คีมชีดมัทฉะ","yield":1.0,"lines":[{"name":"วิปครีมแบบก้อน อิมพีเรียล","g":1000.0,"t":"I","ref":"I045"},{"name":"นมข้นหวานคาร์เนชั่น","g":300.0,"t":"I","ref":"I019"},{"name":"วิปครีมแบบน้ำ Risso","g":100.0,"t":"I","ref":"I026"},{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":50.0,"t":"I","ref":"I028"},{"name":"ผงมัทฉะมังกรบิน","g":16.0,"t":"I","ref":"I033"}],"combo":[],"sell":550000.0,"comboSell":null,"id":"R078"},{"name":"คีมชีดคุ๊กกี้&คีม","yield":1.0,"lines":[{"name":"วิปครีมแบบก้อน อิมพีเรียล","g":1000.0,"t":"I","ref":"I045"},{"name":"นมข้นหวานคาร์เนชั่น","g":300.0,"t":"I","ref":"I019"},{"name":"วิปครีมแบบน้ำ Risso","g":100.0,"t":"I","ref":"I026"},{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":50.0,"t":"I","ref":"I028"},{"name":"คุ๊กกี้บดรสวนิลา","g":50.0,"t":"I","ref":"I052"},{"name":"คุ๊กกี้บดรสchocolate","g":100.0,"t":"I","ref":"I053"}],"combo":[],"sell":550000.0,"comboSell":null,"id":"R079"},{"name":"คีมชีดchocolate","yield":1.0,"lines":[{"name":"วิปครีมแบบก้อน อิมพีเรียล","g":1000.0,"t":"I","ref":"I045"},{"name":"นมข้นหวานคาร์เนชั่น","g":300.0,"t":"I","ref":"I019"},{"name":"วิปครีมแบบน้ำ Risso","g":100.0,"t":"I","ref":"I026"},{"name":"วิปครีมผงDreamy ถุงสีฟ้า","g":50.0,"t":"I","ref":"I028"},{"name":"ผงโกโก้ ตราทิวลิป","g":40.0,"t":"I","ref":"I016"},{"name":"chocolate เม็ดใส่คีมชีด","g":20.0,"t":"I","ref":"I102"}],"combo":[],"sell":550000.0,"comboSell":null,"id":"R080"},{"name":"โมจิแบบดูด","yield":40.0,"lines":[{"name":"แป้งWarabi Mochi","g":75.0,"t":"I","ref":"I061"},{"name":"แป้งไดฟูกุสะตอเบอรี่ ตรา Koon","g":100.0,"t":"I","ref":"I037"},{"name":"แป้งข้าวเหนียว ตราใบหยก","g":75.0,"t":"I","ref":"I034"},{"name":"นมผง Dreamy Milky Cream","g":500.0,"t":"I","ref":"I018"},{"name":"วิปครีมแบบน้ำ Risso","g":250.0,"t":"I","ref":"I026"},{"name":"น้ำ","g":1600.0,"t":"I","ref":"I101"}],"combo":[],"sell":49000.0,"comboSell":null,"id":"R081"},{"name":"โมจิแบบดูดแฟนชาย","yield":1.0,"lines":[{"name":"แป้งWarabi Mochi","g":75.0,"t":"I","ref":"I061"},{"name":"แป้งไดฟูกุสะตอเบอรี่ ตรา Koon","g":100.0,"t":"I","ref":"I037"},{"name":"แป้งข้าวเหนียว ตราใบหยก","g":75.0,"t":"I","ref":"I034"},{"name":"นมผง Dreamy Milky Cream","g":500.0,"t":"I","ref":"I018"},{"name":"วิปครีมแบบน้ำ Risso","g":250.0,"t":"I","ref":"I026"},{"name":"น้ำ","g":1600.0,"t":"I","ref":"I101"}],"combo":[],"sell":250000.0,"comboSell":null,"id":"R082"},{"name":"เผือกกวนแฟนขาย","yield":1.0,"lines":[{"name":"เผือกกวน","g":1000.0,"t":"R","ref":"R072"},{"name":"มันม่วงกวน","g":30.0,"t":"I","ref":"I095"}],"combo":[],"sell":160000.0,"comboSell":null,"id":"R083"},{"name":"เนื้อพีสดอง","yield":25.0,"lines":[{"name":"พีสฟรีซ","g":1000.0,"t":"I","ref":"I092"},{"name":"ไซรัปพีส Long Beach","g":150.0,"t":"I","ref":"I083"},{"name":"น้ำ","g":150.0,"t":"I","ref":"I101"}],"combo":[],"sell":45000.0,"comboSell":null,"id":"R084"},{"name":"ซอสบ๊วย","yield":25.0,"lines":[{"name":"บ๊วยโหลใหญ่","g":200.0,"t":"I","ref":"I070"},{"name":"บ๊วยดอกคำ","g":200.0,"t":"I","ref":"I071"},{"name":"น้ำตาลทรายแดง","g":170.0,"t":"I","ref":"I023"}],"combo":[],"sell":null,"comboSell":null,"id":"R085"},{"name":"ซอสมิกเบอรี่","yield":40.0,"lines":[{"name":"มิกเบอรี่ฟรีซ","g":1000.0,"t":"I","ref":"I093"},{"name":"น้ำตาลทรายแดง","g":100.0,"t":"I","ref":"I023"}],"combo":[],"sell":null,"comboSell":null,"id":"R086"},{"name":"ผงคลุกโมจิคีมชีดวนิลา","yield":50.0,"lines":[{"name":"คุ๊กกี้บดรสวนิลา","g":1000.0,"t":"I","ref":"I052"},{"name":"โอวัลตินเฟลค","g":225.0,"t":"I","ref":"I055"}],"combo":[],"sell":null,"comboSell":null,"id":"R087"},{"name":"ผงคลุกโมจิคีมชีดchocolate","yield":50.0,"lines":[{"name":"คุ๊กกี้บดรสchocolate","g":1000.0,"t":"I","ref":"I053"},{"name":"โอวัลตินเฟลค","g":225.0,"t":"I","ref":"I055"}],"combo":[],"sell":0.0,"comboSell":null,"id":"R088"}],"fx":690};
+const NOTES=[{"t":"1. สูตรชงหน้าร้าน (เมนูปั่น & ชา)","rows":[{"n":"ชาเลมอน","d":"น้ำร้อน 150ml + ผงชาเลมอน 2 ช้อนน้ำตาล + เกลือนิดหน่อย"},{"n":"ชาส้มเลมอน","d":"เบสชาใส 150ml + ไซรัปส้ม(1) 2 ปั๊ม + ไซรัปส้ม(2) 2 ปั๊ม + ไซรัปเลมอน 1 ปั๊ม"},{"n":"ชาพีชเลมอน","d":"เบสชาใส 150ml + ไซรัปส้ม(1) 3 ปั๊ม + ไซรัปส้ม(2) 3 ปั๊ม + ไซรัปเลมอน 1 ปั๊ม"},{"n":"เผือก","d":"น้ำร้อน 100ml + ผงเผือก 1 ช้อนน้ำตาล + นมผงดรีมมี่ 1 ช้อนน้ำตาล + ครีมเทียม 1 ช้อนน้ำตาล + นมผสม 20ml"},{"n":"เนยถั่ว","d":"ชานม/โกโก้ 220ml + เนยถั่ว 15g + น้ำดื่ม 1 ปั๊ม (ป้ายนูเทลล่าและเนยถั่วรอบแก้ว ใส่บุกบราวน์ซูการ์ก่อน)"},{"n":"ปั่นลูกชิด","d":"ลูกชิด 100g + ไซรัปติ่งฟง 60g + น้ำ 4 ปั๊ม + เกลือ 4 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"ปั่นกีวี่","d":"กีวี่ 120g + ไซรัปติ่งฟง 70g + น้ำ 6 ปั๊ม + เกลือ 4 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"ปั่นสตอเบอร์รี่","d":"สตอเบอร์รี่ 120g + ไซรัปติ่งฟง 70g + น้ำ 10 ปั๊ม + เกลือ 3 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"ปั่นสับปะรด","d":"สับปะรด 120g + ไซรัปติ่งฟง 50g + น้ำ 10 ปั๊ม + เกลือ 3 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"ปั่นพีช","d":"พีช 5 ชิ้น + ไซรัปติ่งฟง 40g + น้ำ 18 ปั๊ม + เกลือ 5 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"ปั่นมะม่วง","d":"มะม่วง 120g + ไซรัปติ่งฟง 70g + น้ำ 10 ปั๊ม + เกลือ 3 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"บลูเบอร์รี่","d":"บลูเบอร์รี่ 140g + ไซรัปติ่งฟง 30g + น้ำ 12 ปั๊ม + เกลือ 4 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"ส้ม","d":"ส้ม 120g + ไซรัปติ่งฟง 50g + น้ำ 10 ปั๊ม + นมข้นจืดเมจิ 10ml + นมข้นจืดคาร์เนชัน 10ml + น้ำเชื่อมใส 2 ปั๊ม + เกลือ 4 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"มิกซ์เบอร์รี่","d":"มิกซ์เบอร์รี่ 120g + ไซรัปมิกซ์เบอร์รี่ (Nature Taste) 20g + ไซรัปติ่งฟงสตอเบอร์รี่ 20g + น้ำ 14 ปั๊ม + เกลือ 6 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"ผลไม้รวม","d":"มะม่วง 30g + มิกซ์เบอร์รี่ 40g + ลูกชิด 20g + ไซรัปติ่งฟงสตอเบอร์รี่ 20g + ไซรัปติ่งฟงมะม่วง 30g + ไซรัปติ่งฟงลูกชิด 20g + น้ำ 6 ปั๊ม + เกลือ 5 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"ฝรั่ง","d":"ฝรั่ง 120g + ไซรัปฝรั่ง (Nature Taste) 50g + น้ำ 13 ปั๊ม + เกลือ 3 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"องุ่นเขียว","d":"องุ่นเขียว 120g + ไซรัป Nature Taste 50g + น้ำ 13 ปั๊ม + เกลือ 3 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"องุ่นแดง","d":"องุ่นแดง 120g + ไซรัป 40g + น้ำ 13 ปั๊ม + เกลือ 3 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล"},{"n":"เลมอน","d":"น้ำร้อน 50ml + ผงมะนาว 1/2 ช้อน (คนให้ละลายก่อน) + ไซรัปน้ำผึ้งมะนาวติ่งฟง 50g + น้ำเชื่อมใส 5 ปั๊ม + น้ำ 4 ปั๊ม + เกลือ 6 + ผงปั่นผลไม้ 1 ช้อนน้ำตาล + น้ำแข็ง 2 แก้ว"},{"n":"อโวคาโดนมสด","d":"เนื้ออโวคาโด 1 ลูก + นมเมจิ 80ml + นมข้นจืดคาร์เนชัน 30ml + นมข้นหวาน 50ml + ครีมเทียม 3 ช้อนน้ำตาล + ผงปั่นผลไม้ 1 ช้อนน้ำตาล + เกลือ 6 + น้ำ 3 ปั๊ม"},{"n":"โยเกิร์ต + สไปรูลิน่าสีฟ้า","d":"โยเกิร์ต 100g + ไซรัปโยเกิร์ตติ่งฟง 40g + เกลือ 3 + น้ำ 1.5 แก้ว (แต่งแก้วสีฟ้า)"},{"n":"ชาไทย / ชาเขียว / ชานม","d":"น้ำ 150ml + นมผสม 100ml + ผงปั่นนม 1 ช้อนน้ำตาล"},{"n":"โกโก้","d":"น้ำ 150ml + นมผสม 80ml + ผงปั่นนม 1 ช้อนน้ำตาล"}]},{"t":"2. สูตรต้มน้ำชา & เบสต่างๆ (หลังร้าน)","rows":[{"n":"ชาเขียว (อบ 4 นาที)","d":"ส่วนผสมที่ 1: น้ำ 11,500ml + ใบชา(1) 385g + ใบชา(2) 385g + ใบชา(3) 385g + ใบชา(4) 165g\nส่วนผสมที่ 2: น้ำผงดรีมมี่ 990g + น้ำตาลทรายขาว 440g + นมข้นคาร์เนชัน 1,440g + นมข้นจืด 1,210g + เกลือ 1/8 ช้อนชา (5.5 ครั้ง)\nวิธีทำ: ต้มน้ำให้เดือดพล่าน -> ปิดเตา ใส่ใบชาคน 1-2 นาที -> ปิดฝาอบ 4 นาที -> กรองชามาผสมกับส่วนผสมที่ 2 -> คนให้เข้ากัน เทใส่ถุง แช่ถังน้ำแข็ง"},{"n":"ชานมไต้หวัน (อบ 30 นาที)","d":"ส่วนผสมที่ 1: น้ำ 5,000ml + ใบชา(1) 60g + ใบชา(2) 60g + ใบชา(3) 60g + เบสชา(1) 20g\nส่วนผสมที่ 2: ครีมเทียมคอฟฟี่ดรีมมี่ 260g + น้ำตาลทรายแดง 320g + นมข้นคาร์เนชัน 500g + นมข้นจืด 800g + เกลือ 1/8 ช้อนชา (2 ครั้ง)\nวิธีทำ: ต้มน้ำเดือด -> ปิดเตา ใส่ใบชาคน 1-2 นาที -> ปิดฝาอบ 30 นาที -> กรองชาผสมส่วนผสมที่ 2 -> คนให้เข้ากัน เทใส่ถุง แช่ถังน้ำแข็ง"},{"n":"โกโก้","d":"ส่วนผสม: น้ำ 8,000ml + โกโก้(1) 400g + โกโก้(2) 250g + นมข้นคาร์เนชัน 2,550g + นมข้นจืด 1,100g + น้ำผงดรีมมี่ 500g + เกลือ 1/8 ช้อนชา (3 ครั้ง)\nวิธีทำ: ต้มน้ำเดือด -> ปิดเตา ใส่ส่วนผสมทุกอย่าง คนให้เข้ากัน -> เทใส่ถุง แช่ถังน้ำแข็ง"},{"n":"เบสชาใส (อบ 10 นาที)","d":"น้ำ 8,000ml + ชาใส(1) 25g + ชาใส(2) 30g + เกลือ 1"},{"n":"นมผสม","d":"นมข้น 1,000g + นมข้นจืด 1,000g"},{"n":"แป้งโมจิ (ปั่น 3 นาที)","d":"น้ำ 3,150ml + แบะแซะ 3,000g + เนย 300g + แป้ง(1) 1,250g + แป้งเค้ก 70g + แป้งมัน 150g + แป้งสตาร์ช 800g + แป้งข้าวเหนียว 150g + เกลือ 13 ช้อน + กลิ่นวนิลา 3 ครั้ง (ตักใส่ถุง 4,000g)"}]},{"t":"3. สูตรท็อปปิ้ง & ครีมชีส","rows":[{"n":"วิปครีม (โถเย็น)","d":"น้ำ 1,500g + วิปครีมผง Dreamy (ถุงสีฟ้า) 1 ถุง + วิปครีมผง Dreamy (ถุงสีชมพู) 1 ถุง + เกลือ 1 ช้อน"},{"n":"สังขยา (ใช้ไฟ 1000 ตีให้เร็ว)","d":"วัตถุดิบ: น้ำชาไทย / ชาเขียว / โกโก้ 1,100ml + กะทิผง 150g + นมข้นหวาน 100g + นมข้นหวาน 50g + กะทิสดแบบน้ำ 150g + วิปครีมน้ำ 150g + ไข่แดง 6 ฟอง + ผงมัทฉะ 1/2 ช้อนน้ำตาล + เกลือ 1 + แป้งข้าวโพด 70g\nวิธีทำ: ผสมทุกอย่าง ตีให้เข้ากันจนไม่มีเม็ดแป้ง กรองด้วยตะแกรง 1 รอบก่อนนำไปเคี่ยว (ใส่ถุงเย็น 2 ถุง)"},{"n":"New ครีมชีสแบบอ่อน","d":"ครีมชีสก้อน 1,000g + วิปครีมผง (ถุงสีฟ้า) 100g + นมข้นหวาน 400g + วิปครีมน้ำ 1 กล่อง + เกลือ 3 + กลิ่นวนิลาเล็กน้อย + โยเกิร์ต 200g"},{"n":"New วิปครีมชีส (น้ำ 1400)","d":"ครีมชีส D-one 1 ถุง + ครีมชีส Dreamy 1 ถุง + วิปครีมผง (ถุงสีฟ้า) 250g + วิปครีมผง (ถุงสีชมพู) 250g (ใส่ถุงบีบ เนื้อจะเหมือนตีกระทะวิปครีม)"},{"n":"โมจิแบบดูด","d":"แป้ง Warabi Mochi Premix 75g + แป้งรูปสตอเบอร์รี่ 100g + แป้งข้าวเหนียว 75g + นมผง Dreammy 500g + วิปครีมแบบน้ำ 250g + น้ำ 1,600g + เกลือ 1\nวิธีทำ: คนทุกอย่างให้เข้ากัน เปิดเตาไฟฟ้าที่ 1000 คนไปเรื่อยๆ ให้เร็วอย่าหยุด จนเริ่มตึงๆ แขน เป็นรอยริ้วๆ ให้ปิดไฟ"},{"n":"ครีมชีสของผลไม้โมจิ (ออริจินัล)","d":"วัตถุดิบ: ครีมชีสก้อน 2 ก้อน + เกลือ 2 + วนิลาเล็กน้อย + นมข้นหวาน 600g + วิปปิ้งครีมแบบน้ำ 250g + ผงวิปครีมถุงสีฟ้า 250g (ออริ/สตอ) หรือ 200g (รสอื่น)\nขั้นตอน:\n1. ครีมชีสพัก 1 ชม. หั่นก้อนเล็ก ตีสปีดต่ำ ค่อยเร่งสปีดให้เนื้อเนียน\n2. ค่อยๆ เทนมข้นหวานลงไป ปาดโถ 2-3 ครั้ง\n3. ค่อยๆ เทวิปปิ้งครีมลงไปแล้วเร่งสปีด\n4. เติมผงวิปปิ้งครีมถุงสีฟ้า แล้วเร่งสปีด\n\nดัดแปลงรสชาติ:\n- สตอเบอร์รี่/บลูเบอร์รี่: ผงวิปครีมฟ้า 150g + ผงผลไม้ + น้ำตาล 4 ช้อน\n- องุ่นไชน์มัสแคท: เพิ่มไซรัปองุ่น 100g + สีเขียว 2 หยด\n- มัทฉะ: ผงมัทฉะ 2 ช้อนน้ำตาล\n- ช็อกโกแลต: ผงโกโก้ 6 ช้อน + ช็อกโกแลตเม็ด 6 ช้อนชา\n- คุกกี้ แอนด์ ครีม: แครกเกอร์ 50g + ช็อกโกแลตสีดำ 100g"}]}];
+
+// ---- ຄ່າ Firebase ຂອງຮ້ານ (ຝັງໄວ້ໃນໄຟລ໌ ບໍ່ຕ້ອງໃສ່ເອງ) ----
+const DEFAULT_CFG={
+  apiKey:'AIzaSyC5RQ3RkjRbYlsxneSyZByNI_5JQy1mvdA',
+  authDomain:'mamu-maru.firebaseapp.com',
+  projectId:'mamu-maru',
+  appId:'1:457016031300:web:7fd920e1512d10d44aa411',
+  shop:'mamumaru'
+};
+// ---- 2 ບັນຊີກາງຂອງຮ້ານ ----
+const ACCOUNTS={
+  admin:{email:'admin@mamumaru.la', pw:'MamuAdmin2026'},
+  staff:{email:'staff@mamumaru.la', pw:'MamuStaff2026'}
+};
+const ADMIN_EMAILS=[ACCOUNTS.admin.email];
+function toEmail(u){
+  const s=(u||'').trim().toLowerCase();
+  if(ACCOUNTS[s]) return ACCOUNTS[s].email;
+  return s;
+}
+let S=null, CFG=Object.assign({},DEFAULT_CFG);
+const charts={};
+
+function LS(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(e){ return null; } }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2200); }
+function fmt(n,d){ if(n===null||n===undefined||isNaN(n)) return '—'; return Number(n).toLocaleString('en-US',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
+function K(n){ return fmt(Math.round(n||0)); }
+function pc(n){ return (n*100).toFixed(1)+'%'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function uid(p){ return p+Math.random().toString(36).slice(2,8); }
+
+function blankState(){
+  return {
+    ings: JSON.parse(JSON.stringify(SEED.ings)),
+    recipes: JSON.parse(JSON.stringify(SEED.recipes)),
+    plan:{},      // plan[mk][prodKey] = ຈຳນວນຈອກຕໍ່ເດືອນ
+    actual:{},    // actual[mk][prodKey] = ຈອກທີ່ຂາຍຈິງ
+    stock:{},     // stock[mk][ingId] = {op,ct}
+    purch:{},     // purch[mk] = [{id,ing,qty,cost,note,at}]
+    settings:{ fx:SEED.fx||690, q:0.15, safety:0.10 },
+    users:{}, valid:{},
+    v:1
+  };
+}
+
+/* ---------- lookups ---------- */
+const IX={}, RX={};
+function reindex(){
+  for(const k in IX) delete IX[k];
+  for(const k in RX) delete RX[k];
+  S.ings.forEach(i=>IX[i.id]=i);
+  S.recipes.forEach(r=>RX[r.id]=r);
+}
+function I(id){ return IX[id]; }
+function R(id){ return RX[id]; }
+function cpg(ing){ if(!ing) return 0; return ing.pack? (ing.lak/ing.pack) : 0; }
+function ingName(id){ const x=I(id); return x?x.name:'?'; }
+
+/* ---------- recipe maths ---------- */
+function batchVol(rid){
+  const r=R(rid); if(!r) return 0;
+  return r.lines.reduce((a,l)=>a+(+l.g||0),0);
+}
+// raw (pre Q-factor) cost of one full batch, resolving nested bases
+function batchCost(rid, seen){
+  const r=R(rid); if(!r) return 0;
+  seen=seen||{}; if(seen[rid]) return 0; seen[rid]=1;
+  let t=0;
+  r.lines.forEach(l=>{
+    const g=+l.g||0;
+    if(l.t==='I'){ t+= g*cpg(I(l.ref)); }
+    else if(l.t==='R'){ t+= g*costPerG(l.ref, seen); }
+  });
+  delete seen[rid];
+  return t;
+}
+function qf(){ return +S.settings.q||0; }
+function qfOf(rid){ const r=R(rid); return (r&&r.qf!=null&&r.qf!=='')?(+r.qf||0):qf(); }
+function recipeCost(rid,seen){ return batchCost(rid,seen)*(1+qfOf(rid)); }
+function costPerG(rid,seen){ const v=batchVol(rid); return v? recipeCost(rid,seen)/v : 0; }
+
+// product key: "R012" plain, "R012|C" combo version
+function prodParts(pk){ const a=pk.split('|'); return {rid:a[0], combo:a[1]==='C'}; }
+function prodName(pk){ const p=prodParts(pk); const r=R(p.rid); if(!r) return '?';
+  return r.name + (p.combo?' + Combo':''); }
+function prodPrice(pk){ const p=prodParts(pk); const r=R(p.rid); if(!r) return 0;
+  return (p.combo? r.comboSell : r.sell)||0; }
+function products(){
+  const out=[];
+  S.recipes.forEach(r=>{
+    if(r.sell) out.push(r.id);
+    if(r.comboSell && r.combo && r.combo.length) out.push(r.id+'|C');
+  });
+  return out;
+}
+// grams of every raw ingredient for one cup of a product
+function explodeCup(pk){
+  const out={}; const p=prodParts(pk); const r=R(p.rid); if(!r) return out;
+  const y=+r.yield||1;
+  explodeInto(p.rid, 1/y, out, {});
+  if(p.combo) (r.combo||[]).forEach(l=>{
+    const g=+l.g||0;
+    if(l.t==='I') out[l.ref]=(out[l.ref]||0)+g;
+    else if(l.t==='R'){ const bv=batchVol(l.ref); if(bv) explodeInto(l.ref, g/bv, out, {}); }
+  });
+  return out;
+}
+function explodeInto(rid, batches, out, seen){
+  const r=R(rid); if(!r||seen[rid]) return; seen[rid]=1;
+  r.lines.forEach(l=>{
+    const g=(+l.g||0)*batches;
+    if(l.t==='I') out[l.ref]=(out[l.ref]||0)+g;
+    else if(l.t==='R'){ const bv=batchVol(l.ref); if(bv) explodeInto(l.ref, g/bv, out, seen); }
+  });
+  delete seen[rid];
+}
+function cupCost(pk){
+  const p=prodParts(pk), r=R(p.rid); if(!r) return 0;
+  let t=recipeCost(p.rid)/(+r.yield||1);
+  if(p.combo) (r.combo||[]).forEach(l=>{
+    const g=+l.g||0;
+    t += (l.t==='I'? g*cpg(I(l.ref)) : g*costPerG(l.ref)) * (1+qfOf(p.rid));
+  });
+  return t;
+}
+
+/* ---------- plan / stock accessors ---------- */
+function months(){
+  const set={}; const now=new Date();
+  const start = S.settings.startMonth || mk(now);
+  const [y,mo]=start.split('-').map(Number);
+  for(let k=0;k<12;k++) set[mk(new Date(y,mo-1+k,1))]=1;
+  Object.keys(S.plan||{}).forEach(m=>set[m]=1);
+  Object.keys(S.stock||{}).forEach(m=>set[m]=1);
+  Object.keys(S.purch||{}).forEach(m=>set[m]=1);
+  return Object.keys(set).sort();
+}
+function mk(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function mLabel(m){ const [y,mo]=m.split('-');
+  return ['ມັງກອນ','ກຸມພາ','ມີນາ','ເມສາ','ພຶດສະພາ','ມິຖຸນາ','ກໍລະກົດ','ສິງຫາ','ກັນຍາ','ຕຸລາ','ພະຈິກ','ທັນວາ'][+mo-1]+' '+y; }
+function prevM(m){ const [y,mo]=m.split('-').map(Number); return mk(new Date(y,mo-2,1)); }
+function nextM(m){ const [y,mo]=m.split('-').map(Number); return mk(new Date(y,mo,1)); }
+
+function cups(m,pk){ const v=(S.plan[m]||{})[pk]; return Array.isArray(v)?v.reduce((a,b)=>a+(+b||0),0):(+v||0); }
+function setPlan(m,pk,v){ S.plan[m]=S.plan[m]||{}; S.plan[m][pk]=Math.max(0,+v||0); touch(); }
+function st(m,id){
+  S.stock[m]=S.stock[m]||{};
+  const r=S.stock[m][id]=S.stock[m][id]||{op:0,ct:null};
+  if(r.rc!==undefined) delete r.rc;
+  return r;
+}
+function setSt(m,id,f,v){ const r=st(m,id); r[f]=(v===''||v===null)?(f==='ct'?null:0):+v; touch(); }
+
+/* ---------- ການຊື້ເຂົ້າ ---------- */
+function purchList(m){ return (S.purch&&S.purch[m])||[]; }
+function recv(m,id){ let t=0; purchList(m).forEach(p=>{ if(p.ing===id) t+=+p.qty||0; }); return t; }
+function purchCost(m){ let t=0; purchList(m).forEach(p=>t+=+p.cost||0); return t; }
+function addPurch(m,ingId,packs,qty,cost,note){
+  S.purch=S.purch||{}; S.purch[m]=S.purch[m]||[];
+  S.purch[m].push({id:uid('P'),ing:ingId,packs:+packs||0,qty:+qty||0,cost:+cost||0,
+    note:note||'',at:Date.now(),by:(USER&&USER.email||'').split('@')[0]});
+  touch();
+}
+function delPurch(m,pid){ S.purch[m]=(S.purch[m]||[]).filter(p=>p.id!==pid); touch(); }
+function clearMonth(m){
+  delete S.plan[m]; delete S.stock[m]; delete S.purch[m]; delete S.actual[m];
+  if(S.valid) delete S.valid[m];
+  touch();
+}
+/* ---------- requirement engine ---------- */
+function requirement(m){
+  const need={};
+  products().forEach(pk=>{
+    const c=cups(m,pk); if(!c) return;
+    const g=explodeCup(pk);
+    for(const id in g) need[id]=(need[id]||0)+g[id]*c;
+  });
+  return need;
+}
+function usageActual(m){
+  const need={}; const a=S.actual[m]||{};
+  for(const pk in a){ const c=+a[pk]||0; if(!c) continue;
+    const g=explodeCup(pk); for(const id in g) need[id]=(need[id]||0)+g[id]*c; }
+  return need;
+}
+function orderRows(m){ return rowsFrom(m, requirement(m)); }
+function planTotals(m){
+  let cupsT=0, rev=0, cogs=0;
+  products().forEach(pk=>{
+    const c=cups(m,pk); if(!c) return;
+    cupsT+=c; rev+=c*prodPrice(pk); cogs+=c*cupCost(pk);
+  });
+  return {cupsT,rev,cogs};
+}
+
+/* ================= DEMO DATA ================= */
+function hash(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h; }
+function rnd(seed,lo,hi){ const x=Math.sin(seed)*10000; return lo+(x-Math.floor(x))*(hi-lo); }
+function loadDemo(announce){
+  const m0=S.settings.startMonth||mk(new Date()), m1=prevM(m0);
+  S.plan={}; S.stock={}; S.actual={}; S.purch={};
+  const ps=products();
+  [m1,m0].forEach((m,mi)=>{
+    S.plan[m]={};
+    ps.forEach(pk=>{
+      const h=hash(pk)+mi*7, price=prodPrice(pk);
+      let base = price>=79000?70 : price>=59000?130 : price>=45000?190 : 240;
+      if(pk.indexOf('|C')>0) base=Math.round(base*0.45);
+      S.plan[m][pk]=Math.max(0,Math.round(base*rnd(h,0.5,1.5)));
+    });
+  });
+  S.actual[m1]={};
+  ps.forEach(pk=>{ S.actual[m1][pk]=Math.max(0,Math.round(cups(m1,pk)*rnd(hash(pk)+3,0.88,1.12))); });
+  const need0=scaleUse(requirement(m0)), need1=scaleUse(requirement(m1));
+  S.purch[m1]=[]; S.purch[m0]=[];
+  S.ings.forEach(ing=>{
+    if(ing.stockable===0) return;
+    const h=hash(ing.id), n1=need1[ing.id]||0, n0=need0[ing.id]||0;
+    const p=st(m1,ing.id);
+    p.op=Math.round(n1*rnd(h,0.7,1.4));
+    if(n1>0 && rnd(h+5,0,1)>0.35){
+      const packs=Math.max(1,Math.round(n1*rnd(h+6,0.2,0.8)/(ing.pack||1)));
+      S.purch[m1].push({id:uid('P'),ing:ing.id,packs,qty:packs*(ing.pack||0),
+        cost:packs*(ing.lak||0),note:'',at:Date.now()});
+    }
+    st(m0,ing.id).op=Math.max(0,Math.round(p.op+recv(m1,ing.id)-n1));
+    if(n0>0 && rnd(h+17,0,1)>0.6){
+      const packs=Math.max(1,Math.round(n0*rnd(h+19,0.15,0.5)/(ing.pack||1)));
+      S.purch[m0].push({id:uid('P'),ing:ing.id,packs,qty:packs*(ing.pack||0),
+        cost:packs*(ing.lak||0),note:'',at:Date.now()});
+    }
+  });
+  S.demo=true; touch();
+  if(announce){ renderAll(); toast('ໂຫຼດຂໍ້ມູນຕົວຢ່າງແລ້ວ'); }
+}
+function clearDemo(){
+  S.plan={}; S.stock={}; S.actual={}; S.purch={}; S.demo=false; touch(); renderAll(); toast('ລ້າງແລ້ວ — ພ້ອມໃສ່ຂໍ້ມູນຈິງຂອງທ່ານ');
+}
+
+/* ---------- persistence: Firebase ---------- */
+let dirty=false, fbApp=null, fbAuth=null, fbDb=null, USER=null, ROLE='pending', BASE_ROLE='pending', VIEW_AS=null;
+function touch(){ dirty=true; LS('mamu_state', JSON.stringify(S)); }
+function isAdmin(){ return ROLE==='admin'; }
+function loadLocal(){
+  const raw=LS('mamu_state');
+  if(raw){ try{ S=JSON.parse(raw); }catch(e){ S=blankState(); } }
+  else S=blankState();
+  if(!S.settings) S.settings={fx:SEED.fx||690,q:0.15,safety:0.10};
+  if(S.settings.safety===undefined) S.settings.safety=0.10;
+  if(!S.actual) S.actual={};
+  if(!S.users) S.users={};
+  if(!S.valid) S.valid={};
+  if(!S.purch) S.purch={};
+  // ຍ້າຍຂໍ້ມູນເກົ່າ: ແຜນລາຍອາທິດ → ລາຍເດືອນ, ຮັບເຂົ້າ → ລາຍການຊື້
+  Object.keys(S.plan||{}).forEach(m=>{ const P=S.plan[m];
+    Object.keys(P).forEach(k=>{ if(Array.isArray(P[k])) P[k]=P[k].reduce((a,b)=>a+(+b||0),0); }); });
+  Object.keys(S.stock||{}).forEach(m=>{ const St=S.stock[m];
+    Object.keys(St).forEach(id=>{ const r=St[id];
+      if(r&&r.rc){ S.purch[m]=S.purch[m]||[];
+        S.purch[m].push({id:uid('P'),ing:id,packs:0,qty:+r.rc||0,cost:0,note:'ຍ້າຍຈາກຂໍ້ມູນເກົ່າ',at:Date.now()}); }
+      if(r) delete r.rc; }); });
+  const junk=S.recipes.filter(r=>r.name==='ເມນູໃໝ່'&&(!r.lines||!r.lines.length)&&!r.sell);
+  if(junk.length){ S.recipes=S.recipes.filter(r=>junk.indexOf(r)<0); }
+  reindex();
+  if(junk.length) setTimeout(()=>toast('ລຶບເມນູເປົ່າອອກ '+junk.length+' ລາຍການ'),600);
+}
+function saveCfg(){
+  CFG.apiKey=(document.getElementById('cf-apikey').value||'').trim();
+  CFG.authDomain=(document.getElementById('cf-authdomain').value||'').trim();
+  CFG.projectId=(document.getElementById('cf-project').value||'').trim();
+  CFG.appId=(document.getElementById('cf-appid').value||'').trim();
+  CFG.shop=(document.getElementById('cf-shop').value||'').trim()||'mamumaru';
+  S.settings.q=(+document.getElementById('cf-q').value||0)/100;
+  S.settings.safety=(+document.getElementById('cf-safety').value||0)/100;
+  S.settings.fx=+document.getElementById('cf-fx').value||630;
+  LS('mamu_cfg', JSON.stringify(CFG)); touch(); initFB(); toast('ບັນທຶກການຕັ້ງຄ່າແລ້ວ'); renderAll();
+}
+function saveFbCfg(){
+  CFG.apiKey=(document.getElementById('g-apikey').value||'').trim();
+  CFG.authDomain=(document.getElementById('g-authdomain').value||'').trim();
+  CFG.projectId=(document.getElementById('g-project').value||'').trim();
+  CFG.appId=(document.getElementById('g-appid').value||'').trim();
+  CFG.shop=(document.getElementById('g-shop').value||'').trim()||'mamumaru';
+  LS('mamu_cfg', JSON.stringify(CFG));
+  if(initFB()) gmsg('ເຊື່ອມຕໍ່ Firebase ແລ້ວ — ເຂົ້າສູ່ລະບົບໄດ້ເລີຍ','ok');
+  else gmsg('ຕັ້ງຄ່າບໍ່ຄົບ ຫຼື ບໍ່ຖືກຕ້ອງ','err');
+}
+function loadCfg(){
+  try{ Object.assign(CFG, JSON.parse(LS('mamu_cfg')||'{}')); }catch(e){}
+  Object.keys(DEFAULT_CFG).forEach(k=>{ if(!CFG[k]) CFG[k]=DEFAULT_CFG[k]; });
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.value=v||''; };
+  set('cf-apikey',CFG.apiKey); set('cf-authdomain',CFG.authDomain); set('cf-project',CFG.projectId);
+  set('cf-appid',CFG.appId); set('cf-shop',CFG.shop);
+  set('g-apikey',CFG.apiKey); set('g-authdomain',CFG.authDomain); set('g-project',CFG.projectId);
+  set('g-appid',CFG.appId); set('g-shop',CFG.shop);
+}
+function setSync(t,cls){ const e=document.getElementById('sync'); if(e){ e.textContent=t; e.className='sync '+(cls||''); } }
+function gmsg(t,cls){ const e=document.getElementById('g-msg'); if(e){ e.textContent=t; e.className='small '+(cls==='err'?'neg':cls==='ok'?'pos':''); } }
+
+function initFB(){
+  if(!(CFG.apiKey&&CFG.projectId&&window.firebase)) { setSync('ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ Firebase'); return false; }
+  try{
+    if(!fbApp) fbApp=firebase.initializeApp({apiKey:CFG.apiKey,authDomain:CFG.authDomain||(CFG.projectId+'.firebaseapp.com'),
+      projectId:CFG.projectId,appId:CFG.appId});
+    fbAuth=firebase.auth(); fbDb=firebase.firestore();
+    fbAuth.onAuthStateChanged(u=>{ USER=u; u?onSignedIn():showGate(); });
+    setSync('ພ້ອມໃຊ້ Firebase');
+    return true;
+  }catch(e){ setSync('Firebase ມີບັນຫາ','err'); return false; }
+}
+function showGate(){
+  document.getElementById('gate').classList.add('on');
+  const cf=document.getElementById('g-cfg');
+  if(cf){ const ready=!!(CFG.apiKey&&CFG.projectId); cf.open=!ready; cf.style.display=ready?'none':'block'; }
+}
+function hideGate(){ document.getElementById('gate').classList.remove('on'); }
+async function doSignIn(){
+  if(!fbAuth&&!initFB()){ gmsg('ໃສ່ຄ່າ Firebase ກ່ອນ','err'); return; }
+  const raw=document.getElementById('g-email').value.trim();
+  const e=toEmail(raw), p=document.getElementById('g-pass').value;
+  if(!e||!p){ gmsg('ໃສ່ຊື່ຜູ້ໃຊ້ ແລະ ລະຫັດຜ່ານ','err'); return; }
+  gmsg('ກຳລັງເຂົ້າສູ່ລະບົບ…');
+  try{ await fbAuth.signInWithEmailAndPassword(e,p); return; }
+  catch(err){
+    const c=(err&&err.code)||'';
+    const isNew = c.includes('user-not-found')||c.includes('invalid-credential')||c.includes('invalid-login');
+    const builtin = Object.values(ACCOUNTS).find(a=>a.email===e);
+    if(isNew && builtin && p===builtin.pw){
+      // ບັນຊີກາງນີ້ຍັງບໍ່ມີໃນ Firebase — ສ້າງໃຫ້ອັດຕະໂນມັດຄັ້ງທຳອິດ
+      gmsg('ກຳລັງສ້າງບັນຊີຄັ້ງທຳອິດ…');
+      try{ await fbAuth.createUserWithEmailAndPassword(e,p); return; }
+      catch(e2){ gmsg(authMsg(e2),'err'); return; }
+    }
+    gmsg(authMsg(err),'err');
+  }
+}
+// ປ່ຽນລະຫັດຜ່ານຂອງບັນຊີທີ່ກຳລັງເຂົ້າຢູ່
+async function changeMyPw(){
+  const a=document.getElementById('pw-new').value, b=document.getElementById('pw-new2').value;
+  const msg=t=>{ const e=document.getElementById('pw-msg'); e.textContent=t; };
+  if(a.length<6) return msg('ລະຫັດຜ່ານຕ້ອງຍາວຢ່າງໜ້ອຍ 6 ໂຕ');
+  if(a!==b) return msg('ລະຫັດຜ່ານ 2 ຊ່ອງບໍ່ຄືກັນ');
+  try{ await USER.updatePassword(a); msg('ປ່ຽນລະຫັດຜ່ານແລ້ວ ✓');
+    document.getElementById('pw-new').value=''; document.getElementById('pw-new2').value='';
+    toast('ປ່ຽນລະຫັດຜ່ານແລ້ວ');
+  }catch(e){ msg(e.code&&e.code.includes('recent-login')?'ຄວາມປອດໄພ: ໃຫ້ອອກຈາກລະບົບ ແລ້ວເຂົ້າໃໝ່ ຈຶ່ງປ່ຽນໄດ້':authMsg(e)); }
+}
+// ຜູ້ຈັດການປ່ຽນລະຫັດຜ່ານຂອງບັນຊີພະນັກງານ (ຕ້ອງຮູ້ລະຫັດຜ່ານປັດຈຸບັນ)
+async function changeStaffPw(){
+  const cur=document.getElementById('sp-cur').value, nw=document.getElementById('sp-new').value;
+  const msg=t=>{ const e=document.getElementById('sp-msg'); e.textContent=t; };
+  if(!cur) return msg('ໃສ່ລະຫັດຜ່ານປັດຈຸບັນຂອງພະນັກງານ');
+  if(nw.length<6) return msg('ລະຫັດຜ່ານໃໝ່ຕ້ອງຍາວຢ່າງໜ້ອຍ 6 ໂຕ');
+  msg('ກຳລັງປ່ຽນ…');
+  try{
+    const sec = firebase.apps.find(a=>a.name==='sec') ||
+      firebase.initializeApp({apiKey:CFG.apiKey,authDomain:CFG.authDomain,projectId:CFG.projectId,appId:CFG.appId},'sec');
+    const sa=sec.auth();
+    const res=await sa.signInWithEmailAndPassword(ACCOUNTS.staff.email,cur);
+    await res.user.updatePassword(nw);
+    await sa.signOut();
+    msg('ປ່ຽນລະຫັດຜ່ານພະນັກງານແລ້ວ ✓ — ບອກໃຫ້ພະນັກງານຮູ້ນຳ');
+    document.getElementById('sp-cur').value=''; document.getElementById('sp-new').value='';
+    toast('ປ່ຽນລະຫັດຜ່ານພະນັກງານແລ້ວ');
+  }catch(e){ msg(authMsg(e)); }
+}
+function authMsg(err){
+  const c=(err&&err.code)||'';
+  if(c.includes('wrong-password')||c.includes('invalid-credential')) return 'ຊື່ຜູ້ໃຊ້ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກ';
+  if(c.includes('user-not-found')) return 'ບໍ່ພົບບັນຊີນີ້ — ຕິດຕໍ່ຜູ້ຈັດການ';
+  if(c.includes('email-already-in-use')) return 'ອີເມວນີ້ມີບັນຊີແລ້ວ — ກົດ “ເຂົ້າສູ່ລະບົບ”';
+  if(c.includes('weak-password')) return 'ລະຫັດຜ່ານສັ້ນເກີນໄປ';
+  if(c.includes('network')) return 'ເຊື່ອມຕໍ່ອິນເຕີເນັດບໍ່ໄດ້';
+  return (err&&err.message)||'ເຂົ້າສູ່ລະບົບບໍ່ສຳເລັດ';
+}
+async function doSignOut(){ if(fbAuth) await fbAuth.signOut(); ROLE='pending'; BASE_ROLE='pending'; location.reload(); }
+async function onSignedIn(){
+  gmsg('');
+  await loadCloud(true);
+  const em=((USER&&USER.email)||'').toLowerCase();
+  BASE_ROLE = ADMIN_EMAILS.map(x=>x.toLowerCase()).includes(em) ? 'admin' : 'staff';
+  ROLE = BASE_ROLE;
+  VIEW_AS = null;
+  applyRole(); hideGate(); renderAll();
+  toast('ສະບາຍດີ · '+(isAdmin()?'ຜູ້ຈັດການ':'ພະນັກງານ'));
+}
+function setViewAs(r){
+  if(BASE_ROLE!=='admin') return;
+  VIEW_AS = (r==='staff')?'staff':null;
+  ROLE = VIEW_AS || 'admin';
+  applyRole(); renderAll();
+  toast(VIEW_AS?'ກຳລັງເບິ່ງແບບພະນັກງານ':'ກັບມາເບິ່ງແບບຜູ້ຈັດການ');
+}
+async function saveCloud(quiet){
+  if(!fbDb||!USER){ if(!quiet) toast('ຕັ້ງຄ່າ Firebase ແລະ ເຂົ້າສູ່ລະບົບກ່ອນ'); return; }
+  setSync('ກຳລັງບັນທຶກ…');
+  try{
+    await fbDb.collection('shops').doc(CFG.shop).set({data:JSON.stringify(S),updatedAt:Date.now(),by:USER.email||''});
+    setSync('ບັນທຶກແລ້ວ '+new Date().toLocaleTimeString(),'ok'); dirty=false;
+    if(!quiet) toast('ບັນທຶກຂຶ້ນຄລາວແລ້ວ');
+  }catch(e){ setSync('ບັນທຶກບໍ່ສຳເລັດ','err'); if(!quiet) toast('ບັນທຶກບໍ່ສຳເລັດ: '+e.message); }
+}
+async function loadCloud(quiet){
+  if(!fbDb||!USER){ if(!quiet) toast('ຕັ້ງຄ່າ Firebase ແລະ ເຂົ້າສູ່ລະບົບກ່ອນ'); return; }
+  setSync('ກຳລັງໂຫຼດ…');
+  try{
+    const d=await fbDb.collection('shops').doc(CFG.shop).get();
+    if(!d.exists){ setSync('ຍັງບໍ່ມີຂໍ້ມູນໃນຄລາວ'); return; }
+    const raw=d.data().data;
+    S=typeof raw==='string'?JSON.parse(raw):raw;
+    if(!S.actual) S.actual={}; if(!S.users) S.users={}; if(!S.valid) S.valid={};
+    reindex(); touch();
+    setSync('ໂຫຼດແລ້ວ '+new Date().toLocaleTimeString(),'ok');
+    if(!quiet){ applyRole(); renderAll(); toast('ໂຫຼດຈາກຄລາວແລ້ວ'); }
+  }catch(e){ setSync('ໂຫຼດບໍ່ສຳເລັດ','err'); if(!quiet) toast('ໂຫຼດບໍ່ສຳເລັດ: '+e.message); }
+}
+function exportJSON(){
+  const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download='mamumaru-backup-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+}
+function importJSON(el){
+  const f=el.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ S=JSON.parse(r.result); if(!S.actual)S.actual={}; if(!S.users)S.users={}; if(!S.valid)S.valid={};
+      reindex(); touch(); renderAll(); toast('ກູ້ຂໍ້ມູນຄືນແລ້ວ'); }
+    catch(e){ toast('ອ່ານໄຟລ໌ນີ້ບໍ່ໄດ້'); } };
+  r.readAsText(f);
+}
+function resetSeed(){
+  if(!confirm('ຈະລຶບສະຕັອກ ແຜນ ແລະ ການແກ້ໄຂທັງໝົດ ແລ້ວໂຫຼດຂໍ້ມູນຕົ້ນສະບັບຈາກ Excel ຄືນ. ຢືນຢັນບໍ?')) return;
+  const u=S.users; S=blankState(); S.users=u; reindex(); touch(); renderAll(); toast('ຣີເຊັດກັບໄປຂໍ້ມູນ Excel ແລ້ວ');
+}
+function setFx(v){ S.settings.fx=+v||630; S.ings.forEach(i=>{ if(i.thb) i.lak=i.thb*S.settings.fx; }); touch(); renderIng(); }
+function setWaste(v){ S.settings.q=(+v||0)/100; touch(); renderAll(); }
+function setSafety(v){ S.settings.safety=(+v||0)/100; touch(); renderAll(); }
+
+/* ================= NAV ================= */
+function keep(fn){
+  const a=document.activeElement, id=a&&a.id, sel=a&&a.selectionStart;
+  fn();
+  if(id){ const e=document.getElementById(id); if(e){ e.focus(); try{e.setSelectionRange(sel,sel);}catch(x){} } }
+}
+const PAGES=[['dash','ໜ້າລວມ'],['plan','ແຜນການຂາຍ'],['req','ລາຍການສັ່ງຊື້'],['stock','ສະຕັອກ'],['buy','ຊື້ເຂົ້າ'],
+             ['ing','ວັດຖຸດິບ'],['rec','ສູດເມນູ'],['note','ວິທີຊົງ'],['set','ຕັ້ງຄ່າ']];
+let cur='dash';
+function go(p){
+  if(p==='set'&&!isAdmin()) return;
+  cur=p;
+  PAGES.forEach(([k])=>{ document.getElementById('pg-'+k).classList.toggle('on',k===p); });
+  [...document.querySelectorAll('#nav button')].forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  renderAll();
+}
+function buildNav(){
+  document.getElementById('nav').innerHTML=PAGES.filter(([k])=>isAdmin()||k!=='set').map(([k,n])=>
+    `<button data-p="${k}" class="${k===cur?'on':''}" onclick="go('${k}')">${n}</button>`).join('');
+}
+function applyRole(){
+  const chip=document.getElementById('rolechip');
+  chip.style.display='inline-block';
+  chip.textContent=isAdmin()?'ຜູ້ຈັດການ':'ພະນັກງານ';
+  chip.className='ver '+(isAdmin()?'admin':'staff');
+  document.querySelectorAll('.admin-only').forEach(e=>e.classList.toggle('staff-hide',!isAdmin()));
+  const vb=document.getElementById('viewas');
+  if(vb){
+    vb.style.display = BASE_ROLE==='admin' ? 'inline-block' : 'none';
+    vb.textContent = VIEW_AS ? 'ກັບເປັນຜູ້ຈັດການ' : 'ເບິ່ງແບບພະນັກງານ';
+  }
+  if(!isAdmin()&&cur==='set') cur='dash';
+  buildNav();
+  PAGES.forEach(([k])=>{ const el=document.getElementById('pg-'+k); if(el) el.classList.toggle('on',k===cur); });
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===cur));
+}
+function fillMonths(){
+  const ms=months(), now=mk(new Date());
+  ['d-month','p-month','r-month','s-month','b-month','m-pick'].forEach(id=>{
+    const el=document.getElementById(id); const keep=el.value;
+    el.innerHTML=ms.map(m=>`<option value="${m}">${mLabel(m)}</option>`).join('');
+    el.value=(keep&&ms.includes(keep))?keep:now;
+  });
+}
+function renderAll(){
+  fillMonths();
+  document.getElementById('r-waste').value=Math.round((S.settings.q||0)*1000)/10;
+  document.getElementById('r-safety').value=Math.round((S.settings.safety||0)*1000)/10;
+  document.getElementById('i-fx').value=S.settings.fx;
+  const sm=document.getElementById('cf-start'); if(sm) sm.value=S.settings.startMonth||mk(new Date());
+  if(isAdmin()){
+    document.getElementById('cf-q').value=Math.round((S.settings.q||0)*1000)/10;
+    document.getElementById('cf-safety').value=Math.round((S.settings.safety||0)*1000)/10;
+    document.getElementById('cf-fx').value=S.settings.fx;
+    renderUsers();
+  }
+  document.querySelectorAll('.admin-only').forEach(e=>e.classList.toggle('staff-hide',!isAdmin()));
+  if(cur==='dash') renderDash();
+  if(cur==='plan') renderPlan();
+  if(cur==='req') renderReq();
+  if(cur==='stock') renderStock();
+  if(cur==='ing') renderIng();
+  if(cur==='rec') renderRecList();
+  if(cur==='buy') renderPurch();
+  if(cur==='note') renderNotes();
+}
+function renderNotes(){
+  const q=(document.getElementById('n-search').value||'').toLowerCase();
+  const wrap=document.getElementById('notes-body');
+  let h='';
+  NOTES.forEach(sec=>{
+    const rows=sec.rows.filter(r=>!q||(r.n+' '+r.d).toLowerCase().includes(q));
+    if(!rows.length) return;
+    h+=`<div class="card"><h3>${esc(sec.t)}</h3><div class="scroll" style="max-height:none">
+      <table><thead><tr><th style="width:200px">ລາຍການ</th><th>ສ່ວນປະສົມ ແລະ ວິທີເຮັດ</th></tr></thead><tbody>`;
+    rows.forEach(r=>{ h+=`<tr><td><b>${esc(r.n)}</b></td>
+      <td style="white-space:pre-wrap;line-height:1.7">${esc(r.d)}</td></tr>`; });
+    h+='</tbody></table></div></div>';
+  });
+  wrap.innerHTML=h||'<div class="card"><div class="hint">ບໍ່ພົບລາຍການທີ່ຄົ້ນຫາ</div></div>';
+}
+function renderUsers(){
+  const el=document.getElementById('acct-info'); if(!el) return;
+  el.innerHTML=`<table><thead><tr><th>ອີເມວ</th><th>ສິດ</th><th>ເຫັນຫຍັງແດ່</th></tr></thead><tbody>
+    <tr><td class="mono">admin</td><td><span class="st ok">ຜູ້ຈັດການ</span></td>
+      <td class="small">ທຸກຢ່າງ ລວມທັງຕົ້ນທຶນ ກຳໄລ ແລະ ການຢືນຢັນການນັບສະຕັອກ</td></tr>
+    <tr><td class="mono">staff</td><td><span class="st tight">ພະນັກງານ</span></td>
+      <td class="small">ແຜນຂາຍ · ນັບສະຕັອກ · ລາຍການສັ່ງຊື້ (ບໍ່ເຫັນຕົ້ນທຶນວັດຖຸດິບ ແລະ ກຳໄລ)</td></tr>
+    </tbody></table>
+    <div class="small" style="margin-top:8px">ຕອນນີ້ທ່ານເຂົ້າດ້ວຍ <b>${esc(((USER&&USER.email)||'').split('@')[0]||'—')}</b>${VIEW_AS?' · ກຳລັງເບິ່ງແບບພະນັກງານ':''}</div>`;
+}
+
+/* ================= DASHBOARD ================= */
+function chart(id,cfg){
+  const el=document.getElementById(id); if(!el) return;
+  if(charts[id]) charts[id].destroy();
+  charts[id]=new Chart(el,cfg);
+}
+const GRID='rgba(255,255,255,.06)', TICK='#A99282';
+const LAOFONT={family:"'Noto Sans Lao','Noto Sans Thai',sans-serif"};
+
+// demand map for the chosen source
+function demandNow(){
+  const m=document.getElementById('d-month').value;
+  const sc='M';
+  const src=document.getElementById('d-src').value;
+  document.getElementById('wrap-cups').style.display= src==='quick'?'flex':'none';
+  if(src==='plan'){
+    const t=planTotals(m);
+    return {m,sc,src,need:requirement(m),cupsT:t.cupsT,rev:t.rev,cogs:t.cogs,
+      basis:'ຄິດຈາກແຜນການຂາຍ '+mLabel(m)+' = '+fmt(t.cupsT)+' ຈອກ'};
+  }
+  // quick forecast: spread the total cups over the mix of the saved plan (or evenly)
+  const total=Math.max(0,+document.getElementById('d-cups').value||0);
+  const ps=products();
+  let mix={}, sum=0;
+  ps.forEach(pk=>{ const c=cups(m,pk); mix[pk]=c; sum+=c; });
+  if(!sum){ ps.forEach(pk=>mix[pk]=1); sum=ps.length; }
+  const need={}; let rev=0,cogs=0;
+  ps.forEach(pk=>{
+    const c=total*mix[pk]/sum; if(!c) return;
+    rev+=c*prodPrice(pk); cogs+=c*cupCost(pk);
+    const g=explodeCup(pk); for(const id in g) need[id]=(need[id]||0)+g[id]*c;
+  });
+  return {m,sc,src,need,cupsT:total,rev,cogs,
+    basis:'ຄາດຄະເນ '+fmt(total)+' ຈອກ ແບ່ງຕາມສັດສ່ວນການຂາຍຂອງ '+mLabel(m)};
+}
+function rowsFrom(m,need){
+  const waste=+S.settings.q||0, safety=+S.settings.safety||0;
+  const rows=[];
+  S.ings.forEach(ing=>{
+    if(ing.stockable===0) return;
+    const base=need[ing.id]||0;
+    const withW=base*(1+waste);
+    const target=withW*(1+safety);
+    const avail=(+st(m,ing.id).op||0)+recv(m,ing.id);
+    let shortG=Math.max(0,target-avail); if(shortG<1) shortG=0;
+    const packs=(ing.pack&&shortG)?Math.ceil(shortG/ing.pack):0;
+    rows.push({ing,base,withW,target,avail,bal:avail-withW,packs,
+      orderG:packs*(ing.pack||0), cost:packs*(ing.lak||0)});
+  });
+  return rows;
+}
+function statusOf(r){
+  if(r.withW<=0) return {c:'ok',t:'ບໍ່ໄດ້ໃຊ້'};
+  const ratio=r.avail/r.withW;
+  if(ratio<1) return {c:'short',t:'ຂາດ'};
+  if(ratio<1.15) return {c:'tight',t:'ພໍດີ ໆ'};
+  return {c:'ok',t:'ພຽງພໍ'};
+}
+
+function renderDash(){
+  document.getElementById('demo-bar').style.display=S.demo?'block':'none';
+  const D=demandNow(), m=D.m, sc=D.sc;
+  document.getElementById('d-basis').textContent=D.basis;
+  const rows=rowsFrom(m,D.need);
+  const used=rows.filter(r=>r.withW>0);
+  const short=rows.filter(r=>r.packs>0);
+  const orderCost=short.reduce((a,r)=>a+r.cost,0);
+  const gp=D.rev-D.cogs;
+
+  let kp=[
+    ['ຈຳນວນຈອກ',fmt(Math.round(D.cupsT)),D.src==='quick'?'ຄາດຄະເນ':mLabel(m),''],
+    ['ວັດຖຸດິບທີ່ຂາດ',fmt(short.length),'ຈາກ '+used.length+' ລາຍການທີ່ໃຊ້',short.length?'bad':'good'],
+    ['ເງິນທີ່ຕ້ອງສັ່ງຊື້',K(orderCost)+' ₭',K(orderCost/(S.settings.fx||630))+' ບາດ','gold']];
+  if(isAdmin()) kp=kp.concat([
+    ['ລາຍຮັບ',K(D.rev)+' ₭','ຕາມລາຄາເມນູ','gold'],
+    ['ຕົ້ນທຶນວັດຖຸດິບ',K(D.cogs)+' ₭','ລວມຂອງເສຍ '+pc(S.settings.q),''],
+    ['ກຳໄລຂັ້ນຕົ້ນ',D.rev?pc(gp/D.rev):'—',K(gp)+' ₭','good']]);
+  document.getElementById('d-kpis').innerHTML=kp.map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+
+  // ---- MAIN: demand vs stock ----
+  const showAll=document.getElementById('d-show').value==='all';
+  const top=+document.getElementById('d-top').value||25;
+  let dm=(showAll?used:used.filter(r=>r.bal<0));
+  dm.sort((a,b)=>(a.avail/(a.withW||1))-(b.avail/(b.withW||1)));
+  dm=dm.slice(0,top);
+  document.querySelector('#pg-dash .bigbox').style.height=Math.max(320,dm.length*30+90)+'px';
+  chart('ch-dm',{type:'bar',data:{labels:dm.map(r=>r.ing.name),
+    datasets:[
+      {label:'ຈະໃຊ້ (ກຣາມ)',data:dm.map(r=>Math.round(r.withW)),backgroundColor:'rgba(232,176,75,.85)',borderRadius:3},
+      {label:'ມີໃນສະຕັອກ (ກຣາມ)',data:dm.map(r=>Math.round(r.avail)),backgroundColor:'rgba(79,176,165,.8)',borderRadius:3}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:TICK,boxWidth:14,font:LAOFONT}},
+        tooltip:{bodyFont:LAOFONT,titleFont:LAOFONT,callbacks:{afterBody:c=>{
+          const r=dm[c[0].dataIndex];
+          return r.bal<0? 'ຂາດ '+fmt(-r.bal)+' ກຣາມ · ຕ້ອງສັ່ງ '+r.packs+' ຖົງ = '+K(r.cost)+' ₭'
+                        : 'ເຫຼືອ '+fmt(r.bal)+' ກຣາມ';}}}},
+      scales:{x:{grid:{color:GRID},ticks:{color:TICK,font:LAOFONT}},
+              y:{grid:{display:false},ticks:{color:TICK,font:{size:11,family:LAOFONT.family}}}}}});
+
+  // ---- MAIN table ----
+  let th=`<thead><tr><th>ວັດຖຸດິບ</th><th class="num">ຈະໃຊ້ (ກຣາມ)</th><th class="num">ມີໃນສະຕັອກ</th>
+    <th class="num">ຂາດ / ເຫຼືອ</th><th>ສະຖານະ</th><th class="num">ຕ້ອງສັ່ງ (ຖົງ)</th>
+    <th class="num">ຂະໜາດຖົງ</th><th class="num">ເປັນເງິນ ₭</th></tr></thead><tbody>`;
+  const list=(showAll?used:used.filter(r=>r.bal<0)).sort((a,b)=>(a.avail/(a.withW||1))-(b.avail/(b.withW||1)));
+  list.forEach(r=>{
+    const s=statusOf(r);
+    th+=`<tr><td>${esc(r.ing.name)}</td>
+      <td class="num">${fmt(r.withW)}</td><td class="num">${fmt(r.avail)}</td>
+      <td class="num ${r.bal<0?'neg':'pos'}"><b>${fmt(r.bal)}</b></td>
+      <td><span class="st ${s.c}">${s.t}</span></td>
+      <td class="num"><b>${r.packs||''}</b></td>
+      <td class="num">${fmt(r.ing.pack)}</td>
+      <td class="num">${r.cost?K(r.cost):''}</td></tr>`;
+  });
+  th+=`</tbody><tfoot><tr><th colspan="7">ລວມເງິນທີ່ຕ້ອງສັ່ງ</th><th class="num">${K(orderCost)}</th></tr></tfoot>`;
+  document.getElementById('t-dm').innerHTML=th;
+
+  const mixCups=pk=>D.src==='quick'? quickCups(pk,D) : cups(m,pk);
+  // ---- 12 ເດືອນ ----
+  const ms=months(), tot=ms.map(x=>planTotals(x));
+  chart('ch-week',{data:{labels:ms.map(mLabel),
+    datasets:[
+      {type:'bar',label:'ຈອກ',data:tot.map(x=>x.cupsT),borderRadius:5,yAxisID:'y',
+       backgroundColor:ms.map(x=>x===m?'rgba(232,176,75,.95)':'rgba(232,176,75,.35)')},
+      {type:'line',label:'ລາຍຮັບ ₭',data:tot.map(x=>Math.round(x.rev)),borderColor:'#4FB0A5',
+       backgroundColor:'#4FB0A5',tension:.35,pointRadius:3,yAxisID:'y1'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:TICK,boxWidth:14,font:LAOFONT}},tooltip:{bodyFont:LAOFONT}},
+      scales:{x:{grid:{display:false},ticks:{color:TICK,font:{size:9,family:LAOFONT.family},maxRotation:60}},
+        y:{position:'left',grid:{color:GRID},ticks:{color:TICK}},
+        y1:{position:'right',grid:{display:false},ticks:{color:TICK,callback:v=>Math.round(v/1e6)+'M'}}}}});
+
+  // ---- money split (admin) ----
+  if(isAdmin()){
+  const waste=D.cogs-(D.cogs/(1+(+S.settings.q||0)));
+  const ing=D.cogs-waste, gpv=Math.max(0,D.rev-D.cogs);
+  chart('ch-money',{type:'doughnut',data:{labels:['ກຳໄລຂັ້ນຕົ້ນ','ວັດຖຸດິບ','ຂອງເສຍ '+pc(S.settings.q)],
+    datasets:[{data:[Math.round(gpv),Math.round(ing),Math.round(waste)],
+      backgroundColor:['#4FB0A5','#C77B3E','#E05B4A'],borderColor:'#221A14',borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{position:'bottom',labels:{color:TICK,boxWidth:12,font:LAOFONT}},
+        tooltip:{bodyFont:LAOFONT,callbacks:{label:c=>' '+K(c.parsed)+' ₭ · '+(D.rev?pc(c.parsed/D.rev):'—')}}}}});
+
+  }
+  // ---- weeks of cover ----
+  const div = 4.3;
+  const cov=[];
+  rows.forEach(r=>{ const wnd=r.withW/div; if(wnd<=0) return;
+    cov.push({n:r.ing.name,w:r.avail/wnd,avail:r.avail,wnd,packs:r.packs,cost:r.cost}); });
+  cov.sort((a,b)=>a.w-b.w);
+  const cv=cov.slice(0,14);
+  chart('ch-cover',{type:'bar',data:{labels:cv.map(x=>x.n),
+    datasets:[{data:cv.map(x=>Math.round(x.w*10)/10),
+      backgroundColor:cv.map(x=>x.w<1?'rgba(224,91,74,.85)':x.w<2?'rgba(232,176,75,.85)':'rgba(79,176,165,.8)'),borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{bodyFont:LAOFONT,callbacks:{label:c=>{const x=cv[c.dataIndex];
+        return [' ໃຊ້ໄດ້ອີກ '+x.w.toFixed(1)+' ອາທິດ',' ມີ '+fmt(x.avail)+' ກຣາມ',' ໃຊ້ອາທິດລະ '+fmt(x.wnd)+' ກຣາມ'];}}}},
+      scales:{x:{grid:{color:GRID},ticks:{color:TICK,callback:v=>v+' ອທ',font:LAOFONT}},
+        y:{grid:{display:false},ticks:{color:TICK,font:{size:10,family:LAOFONT.family}}}}}});
+
+  // ---- margin per menu (admin) ----
+  if(isAdmin()){
+  const mg=products().map(pk=>({pk,c:mixCups(pk),gp:prodPrice(pk)-cupCost(pk)}))
+    .filter(x=>x.c>0).sort((a,b)=>b.gp*b.c-a.gp*a.c).slice(0,12);
+  chart('ch-margin',{type:'bar',data:{labels:mg.map(x=>prodName(x.pk)),
+    datasets:[{data:mg.map(x=>Math.round(x.gp*x.c)),
+      backgroundColor:mg.map(x=>x.gp<=0?'rgba(224,91,74,.85)':'rgba(79,176,165,.75)'),borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{bodyFont:LAOFONT,callbacks:{label:c=>{const x=mg[c.dataIndex];
+        return [' ລວມ '+K(x.gp*x.c)+' ₭',' ຈອກລະ '+K(x.gp)+' ₭',' '+fmt(Math.round(x.c))+' ຈອກ'];}}}},
+      scales:{x:{grid:{color:GRID},ticks:{color:TICK,callback:v=>Math.round(v/1e6)+'M'}},
+        y:{grid:{display:false},ticks:{color:TICK,font:{size:10,family:LAOFONT.family}}}}}});
+
+  }
+  // ---- purchase cost + revenue ----
+  const topc=[...short].sort((a,b)=>b.cost-a.cost).slice(0,12);
+  chart('ch-cost',{type:'bar',data:{labels:topc.map(r=>r.ing.name),
+    datasets:[{data:topc.map(r=>Math.round(r.cost)),backgroundColor:'rgba(232,176,75,.8)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{bodyFont:LAOFONT,callbacks:{label:c=>' '+K(c.parsed.x)+' ₭'}}},
+      scales:{x:{grid:{color:GRID},ticks:{color:TICK,callback:v=>Math.round(v/1000)+'k'}},
+              y:{grid:{display:false},ticks:{color:TICK,font:{size:10,family:LAOFONT.family}}}}}});
+
+  if(!isAdmin()){ ['ch-money','ch-margin','ch-rev'].forEach(id=>{ const c=document.getElementById(id); if(c) c.closest('.card').classList.add('staff-hide'); }); }
+  else { ['ch-money','ch-margin','ch-rev'].forEach(id=>{ const c=document.getElementById(id); if(c) c.closest('.card').classList.remove('staff-hide'); }); }
+  if(!isAdmin()) return;
+  const pr=products().map(pk=>({pk,c:mixCups(pk),r:mixCups(pk)*prodPrice(pk)}))
+    .filter(x=>x.c>0).sort((a,b)=>b.r-a.r).slice(0,12);
+  chart('ch-rev',{type:'bar',data:{labels:pr.map(x=>prodName(x.pk)),
+    datasets:[{data:pr.map(x=>Math.round(x.r)),backgroundColor:'rgba(199,123,62,.85)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{bodyFont:LAOFONT,callbacks:{label:c=>' '+K(c.parsed.x)+' ₭ · '+fmt(Math.round(pr[c.dataIndex].c))+' ຈອກ'}}},
+      scales:{x:{grid:{color:GRID},ticks:{color:TICK,callback:v=>Math.round(v/1e6)+'M'}},
+              y:{grid:{display:false},ticks:{color:TICK,font:{size:10,family:LAOFONT.family}}}}}});
+}
+function quickCups(pk,D){
+  const ps=products(); let sum=0; ps.forEach(p=>sum+=cups(D.m,p));
+  if(!sum) return D.cupsT/ps.length;
+  return D.cupsT*cups(D.m,pk)/sum;
+}
+
+/* ================= SALES PLAN (ລາຍເດືອນ) ================= */
+let planRows=[];
+function renderPlan(){
+  const m=document.getElementById('p-month').value;
+  const q=(document.getElementById('p-search').value||'').toLowerCase();
+  const A=isAdmin();
+  planRows=products().filter(pk=>!q||prodName(pk).toLowerCase().includes(q));
+  let h=`<thead><tr><th class="name">ເມນູ</th><th class="num">ລາຄາຂາຍ ₭</th>`
+    + (A?`<th class="num">ຕົ້ນທຶນ ₭</th><th class="num">ກຳໄລ%</th>`:'')
+    + `<th class="num">ຈອກ / ເດືອນ</th><th class="num">ລາຍຮັບ ₭</th></tr></thead><tbody>`;
+  let tc=0,tr=0;
+  planRows.forEach((pk,ri)=>{
+    const n=cups(m,pk), price=prodPrice(pk), cost=cupCost(pk), gp=price?(price-cost)/price:0;
+    tc+=n; tr+=n*price;
+    h+=`<tr><td class="name">${esc(prodName(pk))}</td><td class="num">${K(price)}</td>`
+      + (A?`<td class="num">${K(cost)}</td><td class="num ${gp<0.6?'neg':'pos'}">${pc(gp)}</td>`:'')
+      + `<td><input class="cell" id="c-${ri}-0" data-r="${ri}" data-c="0" type="text" inputmode="numeric" value="${n||''}"></td>`
+      + `<td class="num" id="rv-${ri}">${K(n*price)}</td></tr>`;
+  });
+  h+=`</tbody><tfoot><tr><th class="name">ລວມ</th><th colspan="${A?3:1}"></th>
+    <th class="num">${fmt(tc)}</th><th class="num">${K(tr)}</th></tr></tfoot>`;
+  document.getElementById('t-plan').innerHTML=h;
+  foot();
+  markDirty();
+}
+function cellAt(r,c){ return document.getElementById('c-'+r+'-'+c); }
+function commitCell(inp){
+  const m=document.getElementById('p-month').value;
+  const r=+inp.dataset.r, pk=planRows[r];
+  const v=Math.max(0,Math.round(+String(inp.value).replace(/[^\d.-]/g,'')||0));
+  inp.value=v||''; setPlan(m,pk,v);
+  const rv=document.getElementById('rv-'+r); if(rv) rv.textContent=K(v*prodPrice(pk));
+  foot(); markDirty(true);
+}
+function foot(){
+  const m=document.getElementById('p-month').value, A=isAdmin();
+  let tc=0,tr=0; planRows.forEach(pk=>{ const n=cups(m,pk); tc+=n; tr+=n*prodPrice(pk); });
+  const f=document.querySelector('#t-plan tfoot tr');
+  if(f){ const th=f.querySelectorAll('th'); th[2].textContent=fmt(tc); th[3].textContent=K(tr); }
+  const t=planTotals(m);
+  document.getElementById('p-tot').textContent='ວາງແຜນ '+fmt(t.cupsT)+' ຈອກ · ລາຍຮັບ '+K(t.rev)+' ₭'
+    +(A?' · ຕົ້ນທຶນວັດຖຸດິບ '+K(t.cogs)+' ₭':'');
+}
+document.addEventListener('change',e=>{ if(e.target.classList&&e.target.classList.contains('cell')) commitCell(e.target); });
+document.addEventListener('focusin',e=>{ if(e.target.classList&&e.target.classList.contains('cell')) e.target.select(); });
+document.addEventListener('keydown',e=>{
+  const t=e.target; if(!t.classList||!t.classList.contains('cell')) return;
+  const r=+t.dataset.r; let n=null;
+  if(e.key==='ArrowDown'||e.key==='Enter') n=cellAt(r+1,0);
+  else if(e.key==='ArrowUp') n=cellAt(r-1,0);
+  else return;
+  if(n){ e.preventDefault(); commitCell(t); n.focus(); n.select(); }
+});
+document.addEventListener('paste',e=>{
+  const t=e.target; if(!t.classList||!t.classList.contains('cell')) return;
+  const txt=(e.clipboardData||window.clipboardData).getData('text');
+  if(!txt||!/\n/.test(txt)) return;
+  e.preventDefault();
+  const r0=+t.dataset.r;
+  txt.replace(/\r/g,'').split('\n').forEach((line,ri)=>{
+    if(line==='') return;
+    const cell=cellAt(r0+ri,0);
+    if(cell){ cell.value=line.split('\t')[0].trim(); commitCell(cell); }
+  });
+  toast('ວາງຂໍ້ມູນແລ້ວ');
+});
+function markDirty(on){
+  const e=document.getElementById('p-dirty'); if(!e) return;
+  if(on===true) planDirty=true;
+  e.textContent=planDirty?'ຍັງບໍ່ໄດ້ບັນທຶກຂຶ້ນຄລາວ':'';
+  e.className='small '+(planDirty?'dirty':'saved');
+}
+let planDirty=false;
+async function savePlan(){
+  if(fbDb&&USER){ await saveCloud(); planDirty=false; }
+  else { toast('ບັນທຶກໃນເຄື່ອງແລ້ວ'); planDirty=false; }
+  markDirty();
+}
+function copyPlanPrev(){
+  const m=document.getElementById('p-month').value, p=prevM(m);
+  if(!S.plan[p]){ toast('ບໍ່ມີແຜນຂອງ '+mLabel(p)); return; }
+  S.plan[m]=JSON.parse(JSON.stringify(S.plan[p])); touch(); renderPlan(); markDirty(true);
+  toast('ສຳເນົາຈາກ '+mLabel(p)+' ແລ້ວ');
+}
+function fillPlan(){
+  const v=prompt('ຈຳນວນຈອກຕໍ່ເດືອນ ສຳລັບທຸກເມນູທີ່ເຫັນ'); if(v===null||v==='') return;
+  const m=document.getElementById('p-month').value;
+  planRows.forEach(pk=>setPlan(m,pk,+v));
+  renderPlan(); markDirty(true);
+}
+function clearPlan(){
+  const m=document.getElementById('p-month').value;
+  if(!confirm('ລ້າງແຜນທັງໝົດຂອງ '+mLabel(m)+' ບໍ?')) return;
+  delete S.plan[m]; touch(); renderPlan(); markDirty(true);
+}
+function exportPlanCSV(){
+  const m=document.getElementById('p-month').value;
+  let csv='ເມນູ,ລາຄາຂາຍ,ຕົ້ນທຶນ,ຈອກຕໍ່ເດືອນ,ລາຍຮັບ\n';
+  products().forEach(pk=>{ const n=cups(m,pk);
+    csv+=`"${prodName(pk)}",${Math.round(prodPrice(pk))},${Math.round(cupCost(pk))},${n},${Math.round(n*prodPrice(pk))}\n`; });
+  const b=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='sales-plan-'+m+'.csv'; a.click();
+}
+
+/* ================= ORDER LIST ================= */
+function renderReq(){
+  const m=document.getElementById('r-month').value;
+  const f=document.getElementById('r-filter').value;
+  let rows=orderRows(m);
+  const short=rows.filter(r=>r.packs>0);
+  const cost=short.reduce((a,r)=>a+r.cost,0);
+  const usedCost=rows.reduce((a,r)=>a+r.withW*cpg(r.ing),0);
+  let rk=[
+    ['ລາຍການທີ່ຕ້ອງສັ່ງ',fmt(short.length),mLabel(m),short.length?'bad':'good'],
+    ['ເປັນເງິນ',K(cost)+' ₭','ປັດຂຶ້ນເປັນຖົງເຕັມ','gold'],
+    ['ເປັນເງິນບາດ',K(cost/(S.settings.fx||630))+' ฿','ອັດຕາ '+fmt(S.settings.fx)+' ₭/฿','']];
+  if(isAdmin()) rk.splice(2,0,['ມູນຄ່າວັດຖຸດິບທີ່ໃຊ້',K(usedCost)+' ₭','ຕາມສູດ','']);
+  document.getElementById('r-kpis').innerHTML=rk.map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+
+  if(f==='short') rows=short;
+  rows.sort((a,b)=>b.cost-a.cost||a.bal-b.bal);
+  let h=`<thead><tr><th>ວັດຖຸດິບ</th><th class="num">ຈະໃຊ້ (ກຣາມ)</th><th class="num">+ເສຍ/ສຳຮອງ</th>
+    <th class="num">ຕົ້ນເດືອນ</th><th class="num">ຮັບເຂົ້າ</th><th class="num">ມີທັງໝົດ</th>
+    <th class="num">ຂາດ/ເຫຼືອ</th><th class="num">ຂະໜາດຖົງ</th><th class="num">ຈຳນວນຖົງ</th>
+    <th class="num">ລວມກຣາມ</th><th class="num">₭/ຖົງ</th><th class="num">ເປັນເງິນ ₭</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    h+=`<tr><td>${esc(r.ing.name)}</td>
+      <td class="num">${fmt(r.base)}</td><td class="num">${fmt(r.target)}</td>
+      <td class="num">${fmt(st(m,r.ing.id).op)}</td><td class="num">${fmt(recv(m,r.ing.id))}</td>
+      <td class="num">${fmt(r.avail)}</td>
+      <td class="num ${r.bal<0?'neg':'pos'}">${fmt(r.bal)}</td>
+      <td class="num">${fmt(r.ing.pack)}</td>
+      <td class="num"><b>${r.packs||''}</b></td>
+      <td class="num">${r.orderG?fmt(r.orderG):''}</td>
+      <td class="num">${r.ing.lak?K(r.ing.lak):''}</td>
+      <td class="num">${r.cost?K(r.cost):''}</td></tr>`;
+  });
+  h+=`</tbody><tfoot><tr><th colspan="11">ລວມເງິນທີ່ຕ້ອງສັ່ງ</th><th class="num">${K(cost)}</th></tr></tfoot>`;
+  document.getElementById('t-req').innerHTML=h;
+}
+function exportOrderCSV(){
+  const m=document.getElementById('r-month').value;
+  const rows=orderRows(m).filter(r=>r.packs>0);
+  let csv='ວັດຖຸດິບ,ຈະໃຊ້ g,ລວມສຳຮອງ g,ມີໃນສະຕັອກ g,ຈຳນວນຖົງ,ຂະໜາດຖົງ g,ລາຄາ/ຖົງ ກີບ,ເປັນເງິນ ກີບ\n';
+  rows.forEach(r=>csv+=`"${r.ing.name}",${Math.round(r.base)},${Math.round(r.target)},${Math.round(r.avail)},${r.packs},${r.ing.pack},${Math.round(r.ing.lak)},${Math.round(r.cost)}\n`);
+  const b=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download='order-'+m+'.csv'; a.click();
+}
+
+/* ================= STOCK ================= */
+function renderStock(){
+  const m=document.getElementById('s-month').value;
+  const A=isAdmin();
+  const basis=(document.getElementById('s-basis')||{}).value||'plan';
+  const use = basis==='plan' ? scaleUse(requirement(m)) : scaleUse(usageActual(m));
+  const V=(S.valid||{})[m];
+  const vs=document.getElementById('s-vstat');
+  if(vs) vs.innerHTML = V? `<span class="vbadge">ຢືນຢັນແລ້ວ · ${esc(V.by||'')} · ${new Date(V.at).toLocaleDateString()}</span>`
+                        : `<span class="small">ຍັງບໍ່ໄດ້ຢືນຢັນການນັບ</span>`;
+  let h = `<thead><tr><th>ວັດຖຸດິບ</th><th class="num">ສະຕັອກຕົ້ນເດືອນ g</th><th class="num">ຊື້ເຂົ້າ g</th>`
+    + (A?`<th class="num">ຈະໃຊ້ຕາມແຜນ g</th><th class="num">ຄາດວ່າຈະເຫຼືອ g</th>`:'')
+    + `<th class="num">ນັບຈິງທ້າຍເດືອນ g</th>`
+    + (A?`<th class="num">ຜົນຕ່າງ</th><th class="num">ມູນຄ່າ ₭</th>`:`<th>ສະຖານະ</th>`)
+    + `</tr></thead><tbody>`;
+  let val=0, varv=0, counted=0, total=0;
+  const lock=(!A&&V)?'disabled':'';
+  S.ings.forEach(ing=>{
+    if(ing.stockable===0) return;
+    total++;
+    const r=st(m,ing.id), u=use[ing.id]||0, rc=recv(m,ing.id);
+    const cl=(+r.op||0)+rc-u;
+    const cnt=(r.ct===null||r.ct===undefined)?null:+r.ct;
+    if(cnt!==null) counted++;
+    const vr=cnt===null?null:cnt-cl;
+    val+=cl*cpg(ing); if(vr!==null) varv+=vr*cpg(ing);
+    h+=`<tr><td>${esc(ing.name)}</td>
+      <td class="num"><input type="number" ${lock} style="width:92px" value="${r.op||''}" onchange="setSt('${m}','${ing.id}','op',this.value);keep(renderStock)"></td>
+      <td class="num">${rc?fmt(rc):'—'}</td>`
+      + (A?`<td class="num">${fmt(u)}</td><td class="num ${cl<0?'neg':''}"><b>${fmt(cl)}</b></td>`:'')
+      + `<td class="num"><input type="number" ${lock} style="width:96px" value="${cnt===null?'':cnt}" onchange="setSt('${m}','${ing.id}','ct',this.value);keep(renderStock)"></td>`
+      + (A?`<td class="num ${vr===null?'':(vr<0?'neg':'pos')}">${vr===null?'—':fmt(vr)}</td>
+            <td class="num">${K(cl*cpg(ing))}</td>`
+          :`<td>${cnt===null?'<span class="small">ຍັງບໍ່ໄດ້ນັບ</span>':'<span class="st ok">ນັບແລ້ວ</span>'}</td>`)
+      + `</tr>`;
+  });
+  document.getElementById('t-stock').innerHTML=h+'</tbody>';
+  const need=orderRows(m).filter(r=>r.packs>0);
+  const k=document.getElementById('s-kpis');
+  if(A&&k){
+    k.innerHTML=[
+      ['ມູນຄ່າສະຕັອກທ້າຍເດືອນ',K(val)+' ₭',mLabel(m),'gold'],
+      ['ຜົນຕ່າງຈາກການນັບ',K(varv)+' ₭','ນັບຈິງ ລົບ ຄາດວ່າຈະເຫຼືອ',varv<0?'bad':''],
+      ['ນັບແລ້ວ',counted+' / '+total,'ລາຍການ',counted<total?'':'good'],
+      ['ຍັງຕ້ອງສັ່ງ',fmt(need.length)+' ລາຍການ',K(need.reduce((a,r)=>a+r.cost,0))+' ₭','']
+    ].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="l">${l}</div><div class="v" style="font-size:18px">${v}</div><div class="s">${s}</div></div>`).join('');
+  }
+  const hint=document.getElementById('s-staffhint');
+  if(hint) hint.textContent = A?'' :
+    'ໃສ່ສະຕັອກທີ່ມີຢູ່ຈິງຕົ້ນເດືອນ ແລະ ນັບຂອງຈິງທ້າຍເດືອນ. ຕົວເລກທີ່ລະບົບຄິດໄດ້ຈະບໍ່ສະແດງ ເພື່ອໃຫ້ການນັບເປັນອິດສະຫຼະ. ນັບແລ້ວ '+counted+' ຈາກ '+total+' ລາຍການ.';
+}
+
+/* ================= ຊື້ເຂົ້າ ================= */
+function renderPurch(){
+  const m=document.getElementById('b-month').value;
+  const A=isAdmin();
+  const sel=document.getElementById('b-ing');
+  if(sel && sel.options.length!==S.ings.length){
+    sel.innerHTML=S.ings.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join('');
+  }
+  const list=purchList(m).slice().sort((a,b)=>b.at-a.at);
+  let h=`<thead><tr><th>ວັນທີ</th><th>ວັດຖຸດິບ</th><th class="num">ຖົງ</th><th class="num">ກຣາມ</th>`
+    + (A?`<th class="num">ເປັນເງິນ ₭</th>`:'')
+    + `<th>ໝາຍເຫດ</th><th></th></tr></thead><tbody>`;
+  if(!list.length) h+=`<tr><td colspan="7" class="small">ຍັງບໍ່ມີການຊື້ເຂົ້າໃນ ${esc(mLabel(m))}</td></tr>`;
+  list.forEach(p=>{
+    const ing=I(p.ing);
+    h+=`<tr><td class="small">${new Date(p.at).toLocaleDateString()}${p.by?' · '+esc(p.by):''}</td>
+      <td>${esc(ing?ing.name:'?')}</td>
+      <td class="num">${p.packs||'—'}</td><td class="num">${fmt(p.qty)}</td>`
+      + (A?`<td class="num">${p.cost?K(p.cost):'—'}</td>`:'')
+      + `<td class="small">${esc(p.note||'')}</td>
+      <td><button class="btn sm ghost" onclick="rmPurch('${m}','${p.id}')">✕</button></td></tr>`;
+  });
+  const tq=list.reduce((a,p)=>a+(+p.qty||0),0), tc=list.reduce((a,p)=>a+(+p.cost||0),0);
+  h+=`</tbody><tfoot><tr><th colspan="3">ລວມ ${list.length} ຄັ້ງ</th><th class="num">${fmt(tq)}</th>`
+    + (A?`<th class="num">${K(tc)}</th>`:'')+`<th colspan="2"></th></tr></tfoot>`;
+  document.getElementById('t-purch').innerHTML=h;
+  const kp=document.getElementById('b-kpis');
+  if(kp) kp.innerHTML=[
+    ['ຈຳນວນຄັ້ງ',fmt(list.length),mLabel(m),''],
+    ['ລວມນ້ຳໜັກ',fmt(tq)+' g','ຮັບເຂົ້າສາງ',''],
+    ...(A?[['ລວມເປັນເງິນ',K(tc)+' ₭',K(tc/(S.settings.fx||690))+' ບາດ','gold']]:[])
+  ].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="l">${l}</div><div class="v" style="font-size:18px">${v}</div><div class="s">${s}</div></div>`).join('');
+  bCalc();
+}
+function bCalc(){
+  const id=document.getElementById('b-ing').value, ing=I(id);
+  const packs=+document.getElementById('b-packs').value||0;
+  const gEl=document.getElementById('b-qty'), cEl=document.getElementById('b-cost');
+  if(ing&&packs){
+    if(!gEl.dataset.touched) gEl.value=Math.round(packs*(ing.pack||0));
+    if(!cEl.dataset.touched) cEl.value=Math.round(packs*(ing.lak||0));
+  }
+  const hint=document.getElementById('b-hint');
+  if(hint) hint.textContent = ing? `1 ຖົງ = ${fmt(ing.pack)} g`+(isAdmin()&&ing.lak?` · ${K(ing.lak)} ₭`:'') : '';
+}
+function savePurch(){
+  const m=document.getElementById('b-month').value;
+  const id=document.getElementById('b-ing').value;
+  const packs=+document.getElementById('b-packs').value||0;
+  const qty=+document.getElementById('b-qty').value||0;
+  const cost=+document.getElementById('b-cost').value||0;
+  const note=document.getElementById('b-note').value;
+  if(!id||(!qty&&!packs)){ toast('ເລືອກວັດຖຸດິບ ແລະ ໃສ່ຈຳນວນ'); return; }
+  const ing=I(id);
+  addPurch(m,id,packs,qty||packs*(ing.pack||0),cost,note);
+  ['b-packs','b-qty','b-cost','b-note'].forEach(x=>{ const e=document.getElementById(x); e.value=''; delete e.dataset.touched; });
+  renderPurch(); toast('ບັນທຶກການຊື້ເຂົ້າແລ້ວ');
+}
+function rmPurch(m,pid){
+  if(!confirm('ລຶບລາຍການນີ້ບໍ?')) return;
+  delPurch(m,pid); renderPurch(); toast('ລຶບແລ້ວ');
+}
+function orderToPurch(){
+  const m=document.getElementById('r-month').value;
+  const rows=orderRows(m).filter(r=>r.packs>0);
+  if(!rows.length){ toast('ບໍ່ມີລາຍການທີ່ຕ້ອງສັ່ງ'); return; }
+  if(!confirm('ຈະບັນທຶກທັງ '+rows.length+' ລາຍການ ເປັນການຊື້ເຂົ້າຂອງ '+mLabel(m)+' ບໍ?\nໃຊ້ເມື່ອຂອງມາຮອດຮ້ານແລ້ວ.')) return;
+  rows.forEach(r=>addPurch(m,r.ing.id,r.packs,r.orderG,r.cost,'ຈາກລາຍການສັ່ງຊື້'));
+  toast('ບັນທຶກ '+rows.length+' ລາຍການແລ້ວ'); renderAll();
+}
+function delMonth(){
+  const m=document.getElementById('m-pick').value;
+  if(!isAdmin()) return;
+  if(!confirm('ລຶບຂໍ້ມູນທັງໝົດຂອງ '+mLabel(m)+' ບໍ?\nແຜນຂາຍ · ສະຕັອກ · ການຊື້ເຂົ້າ ຈະຫາຍໄປໝົດ ແລະ ກູ້ຄືນບໍ່ໄດ້.')) return;
+  clearMonth(m); renderAll(); toast('ລຶບ '+mLabel(m)+' ແລ້ວ');
+}
+function setStartMonth(v){
+  if(!isAdmin()||!v) return;
+  S.settings.startMonth=v; touch(); renderAll(); toast('ເລີ່ມນັບ 12 ເດືອນຈາກ '+mLabel(v));
+}
+function validateCount(){
+  if(!isAdmin()) return;
+  const m=document.getElementById('s-month').value;
+  const use=scaleUse(requirement(m));
+  let n=0, diff=0;
+  S.ings.forEach(ing=>{
+    if(ing.stockable===0) return;
+    const r=st(m,ing.id);
+    if(r.ct===null||r.ct===undefined) return;
+    n++; diff+=(+r.ct-((+r.op||0)+recv(m,ing.id)-(use[ing.id]||0)))*cpg(ing);
+  });
+  if(!n){ toast('ຍັງບໍ່ມີການນັບຈິງໃນເດືອນນີ້'); return; }
+  if(!confirm('ຢືນຢັນການນັບ '+n+' ລາຍການ ຂອງ '+mLabel(m)+' ບໍ?\nຜົນຕ່າງລວມ '+K(diff)+' ກີບ. ຫຼັງຢືນຢັນແລ້ວ ພະນັກງານຈະແກ້ໄຂຕົວເລກບໍ່ໄດ້.')) return;
+  S.valid=S.valid||{};
+  S.valid[m]={by:(USER&&USER.email)||'admin',at:Date.now(),n,diff:Math.round(diff)};
+  touch(); saveCloud(true); renderStock(); toast('ຢືນຢັນການນັບ '+mLabel(m)+' ແລ້ວ');
+}
+function scaleUse(o){ const q=1+(+S.settings.q||0); const r={}; for(const k in o) r[k]=o[k]*q; return r; }
+function pullPrevClosing(){
+  if(!isAdmin()) return;
+  const m=document.getElementById('s-month').value, p=prevM(m);
+  const use=scaleUse(requirement(p));
+  let n=0;
+  S.ings.forEach(ing=>{
+    const r=st(p,ing.id);
+    const cl=(r.ct!==null&&r.ct!==undefined)?+r.ct:((+r.op||0)+recv(p,ing.id)-(use[ing.id]||0));
+    st(m,ing.id).op=Math.max(0,Math.round(cl)); n++;
+  });
+  touch(); renderStock(); toast('ດຶງສະຕັອກຕົ້ນເດືອນຈາກ '+mLabel(p)+' ແລ້ວ');
+}
+function closeMonth(){
+  if(!isAdmin()) return;
+  const m=document.getElementById('s-month').value, n=nextM(m);
+  if(!(S.valid||{})[m] && !confirm('ເດືອນ '+mLabel(m)+' ຍັງບໍ່ໄດ້ຢືນຢັນການນັບ. ຈະປິດເດືອນເລີຍບໍ?')) return;
+  const use=scaleUse(requirement(m));
+  S.ings.forEach(ing=>{
+    const r=st(m,ing.id);
+    const cl=(r.ct!==null&&r.ct!==undefined)?+r.ct:((+r.op||0)+recv(m,ing.id)-(use[ing.id]||0));
+    st(n,ing.id).op=Math.max(0,Math.round(cl));
+  });
+  touch(); toast('ປິດ '+mLabel(m)+' ແລ້ວ — ຂຽນສະຕັອກຕົ້ນເດືອນໃສ່ '+mLabel(n));
+  document.getElementById('s-month').value=n; renderStock();
+}
+
+/* ================= MARKET LIST ================= */
+function renderIng(){
+  const A=isAdmin();
+  const q=(document.getElementById('i-search').value||'').toLowerCase();
+  document.querySelectorAll('#pg-ing .admin-only').forEach(e=>e.classList.toggle('staff-hide',!A));
+  const np=S.ings.filter(i=>!i.lak);
+  const nb=document.getElementById('noprice');
+  if(nb){
+    nb.style.display=(A&&np.length)?'block':'none';
+    if(A&&np.length) nb.innerHTML=`<b style="color:var(--bad)">ຍັງບໍ່ມີລາຄາ ${np.length} ລາຍການ</b>
+      <div class="hint" style="margin-top:6px">ວັດຖຸດິບເຫຼົ່ານີ້ບໍ່ມີໃນ Marketlist ຈຶ່ງຄິດຕົ້ນທຶນເປັນ 0 — ໃສ່ລາຄາໃຫ້ແດ່ ຕົ້ນທຶນສູດຈຶ່ງຈະຖືກຕ້ອງ:</div>
+      <div class="small" style="margin-top:6px">${np.map(i=>esc(i.name)).join(' · ')}</div>`;
+  }
+  let h = A
+    ? `<thead><tr><th>ວັດຖຸດິບ</th><th class="num">ຂະໜາດຖົງ g</th><th class="num">฿ / ຖົງ</th>
+        <th class="num">₭ / ຖົງ</th><th class="num">₭ / ກຣາມ</th><th>ໃຊ້ໃນສູດ</th><th></th></tr></thead><tbody>`
+    : `<thead><tr><th>ວັດຖຸດິບ</th><th class="num">ຂະໜາດຖົງ g</th><th>ໜ່ວຍ</th><th>ໃຊ້ໃນສູດ</th></tr></thead><tbody>`;
+  const uses={};
+  S.recipes.forEach(r=>[...(r.lines||[]),...(r.combo||[])].forEach(l=>{
+    if(l.t==='I'){ uses[l.ref]=uses[l.ref]||new Set(); uses[l.ref].add(r.name); }}));
+  S.ings.filter(i=>!q||i.name.toLowerCase().includes(q)).forEach(i=>{
+    const n=uses[i.id]?uses[i.id].size:0;
+    if(A){
+      h+=`<tr><td><input value="${esc(i.name)}" style="width:250px" onchange="editIng('${i.id}','name',this.value)"></td>
+        <td class="num"><input type="number" style="width:80px" value="${i.pack||''}" onchange="editIng('${i.id}','pack',this.value)"></td>
+        <td class="num"><input type="number" style="width:80px" value="${i.thb||''}" onchange="editIng('${i.id}','thb',this.value)"></td>
+        <td class="num"><input type="number" style="width:100px" value="${Math.round(i.lak)||''}" onchange="editIng('${i.id}','lak',this.value)"></td>
+        <td class="num mono">${cpg(i).toFixed(2)}</td>
+        <td class="small">${n?n+' ສູດ':'—'}</td>
+        <td><button class="btn sm ghost" onclick="delIng('${i.id}')">✕</button></td></tr>`;
+    } else {
+      h+=`<tr><td>${esc(i.name)}</td><td class="num">${fmt(i.pack)}</td>
+        <td class="small">ກຣາມ</td><td class="small">${n?n+' ສູດ':'—'}</td></tr>`;
+    }
+  });
+  document.getElementById('t-ing').innerHTML=h+'</tbody>';
+}
+function editIng(id,f,v){
+  if(!isAdmin()) return;
+  const i=I(id); if(!i) return;
+  if(f==='name') i.name=v;
+  else if(f==='thb'){ i.thb=+v||0; i.lak=i.thb*(S.settings.fx||630); }
+  else if(f==='lak'){ i.lak=+v||0; i.thb=S.settings.fx?i.lak/S.settings.fx:0; }
+  else i[f]=+v||0;
+  touch(); renderIng();
+}
+function addIng(){
+  if(!isAdmin()) return;
+  const i={id:uid('I'),name:'ວັດຖຸດິບໃໝ່',pack:1000,thb:0,lak:0,stockable:1};
+  S.ings.push(i); reindex(); touch(); renderIng();
+}
+function delIng(id){
+  if(!isAdmin()) return;
+  const used=S.recipes.some(r=>[...(r.lines||[]),...(r.combo||[])].some(l=>l.t==='I'&&l.ref===id));
+  if(used){ toast('ວັດຖຸດິບນີ້ຖືກໃຊ້ໃນສູດຢູ່ — ໃຫ້ລຶບອອກຈາກສູດກ່ອນ'); return; }
+  if(!confirm('ລຶບວັດຖຸດິບນີ້ບໍ?')) return;
+  S.ings=S.ings.filter(x=>x.id!==id); reindex(); touch(); renderIng();
+}
+
+/* ================= RECIPES ================= */
+function renderRecList(){
+  const A=isAdmin();
+  document.querySelectorAll('#pg-rec .admin-only').forEach(e=>e.classList.toggle('staff-hide',!A));
+  const q=(document.getElementById('rc-search').value||'').toLowerCase();
+  let h = A
+    ? `<thead><tr><th>ເມນູ</th><th></th><th class="num">ໄດ້ຈັກຈອກ</th><th class="num">ຕໍ່ຊຸດ g</th>
+        <th class="num">ຕົ້ນທຶນ/ຊຸດ ₭</th><th class="num">₭ / ກຣາມ</th><th class="num">ຕໍ່ຈອກ ₭</th>
+        <th class="num">ລາຄາຂາຍ ₭</th><th class="num">ຕົ້ນທຶນ %</th><th></th></tr></thead><tbody>`
+    : `<thead><tr><th>ເມນູ</th><th></th><th class="num">ໄດ້ຈັກຈອກ</th><th class="num">ຕໍ່ຊຸດ g</th>
+        <th class="num">ຕໍ່ຈອກ g</th><th class="num">ລາຄາຂາຍ ₭</th><th></th></tr></thead><tbody>`;
+  S.recipes.filter(r=>!q||r.name.toLowerCase().includes(q)).forEach(r=>{
+    const bv=batchVol(r.id);
+    const tag=r.sell?'<span class="pill sell">ເມນູຂາຍ</span>':'<span class="pill base">ເບສ</span>';
+    if(A){
+      const bc=recipeCost(r.id), cg=costPerG(r.id);
+      const cc=r.sell?cupCost(r.id):bc/(+r.yield||1);
+      const cp=r.sell?cc/r.sell:null;
+      h+=`<tr><td>${esc(r.name)}</td><td>${tag}</td>
+        <td class="num">${fmt(r.yield)}</td><td class="num">${fmt(bv)}</td>
+        <td class="num">${K(bc)}</td><td class="num mono">${cg.toFixed(2)}</td>
+        <td class="num">${K(cc)}</td><td class="num">${r.sell?K(r.sell):'—'}</td>
+        <td class="num ${cp&&cp>0.4?'neg':'pos'}">${cp?pc(cp):'—'}</td>
+        <td><button class="btn sm ghost" onclick="openRec('${r.id}')">ເປີດ</button></td></tr>`;
+    } else {
+      h+=`<tr><td>${esc(r.name)}</td><td>${tag}</td>
+        <td class="num">${fmt(r.yield)}</td><td class="num">${fmt(bv)}</td>
+        <td class="num">${fmt(bv/(+r.yield||1))}</td><td class="num">${r.sell?K(r.sell):'—'}</td>
+        <td><button class="btn sm ghost" onclick="openRec('${r.id}')">ເປີດ</button></td></tr>`;
+    }
+  });
+  document.getElementById('t-rec').innerHTML=h+'</tbody>';
+}
+let curRec=null;
+function openRec(id){
+  curRec=id; const r=R(id); if(!r) return;
+  const A=isAdmin();
+  const opts=(sel,t)=>{
+    let o='<optgroup label="ວັດຖຸດິບ">'+S.ings.map(i=>`<option value="I:${i.id}" ${t==='I'&&sel===i.id?'selected':''}>${esc(i.name)}</option>`).join('')+'</optgroup>';
+    o+='<optgroup label="ເບສ / ເມນູອື່ນ">'+S.recipes.filter(x=>x.id!==id).map(x=>`<option value="R:${x.id}" ${t==='R'&&sel===x.id?'selected':''}>${esc(x.name)}</option>`).join('')+'</optgroup>';
+    return o;
+  };
+  const lineRows=(coll)=>(r[coll]||[]).map((l,ix)=>{
+    const nm=l.t==='I'?(I(l.ref)||{}).name:(R(l.ref)||{}).name;
+    if(!A) return `<tr><td>${esc(nm||'')}</td><td class="num mono">${fmt(l.g)}</td></tr>`;
+    const unit=l.t==='I'?cpg(I(l.ref)):costPerG(l.ref);
+    return `<tr><td><select onchange="setLine('${coll}',${ix},'ref',this.value)" style="width:230px">${opts(l.ref,l.t)}</select></td>
+      <td class="num"><input type="number" style="width:80px" value="${l.g}" onchange="setLine('${coll}',${ix},'g',this.value)"></td>
+      <td class="num mono" id="u-${coll}-${ix}">${unit.toFixed(2)}</td>
+      <td class="num" id="lc-${coll}-${ix}">${K(unit*l.g)}</td>
+      <td><button class="btn sm ghost" onclick="delLine('${coll}',${ix})">✕</button></td></tr>`;
+  }).join('');
+  const bv=batchVol(id), bc=A?recipeCost(id):0;
+  const head = A
+    ? `<th>ລາຍການ</th><th class="num">ກຣາມ</th><th class="num">₭/ກຣາມ</th><th class="num">ຕົ້ນທຶນ ₭</th><th></th>`
+    : `<th>ລາຍການ</th><th class="num">ກຣາມ</th>`;
+  document.getElementById('sheet').innerHTML=`
+    <div class="row"><h2 id="rec-title">${esc(r.name)}</h2><div class="spacer"></div>
+      <button class="btn ghost sm" onmousedown="closeModal()" ontouchstart="closeModal()">ປິດ</button></div>
+    ${A?`<div class="row" style="margin:12px 0">
+      <label class="f">ຊື່ເມນູ<input value="${esc(r.name)}" style="width:230px" onchange="setRec('name',this.value)"></label>
+      <label class="f">1 ຊຸດ ໄດ້ຈັກຈອກ<input type="number" style="width:110px" value="${r.yield}" onchange="setRec('yield',this.value)"></label>
+      <label class="f">ລາຄາຂາຍ ₭<input type="number" style="width:120px" value="${r.sell||''}" onchange="setRec('sell',this.value)"></label>
+      <label class="f">ລາຄາຄອມໂບ ₭<input type="number" style="width:120px" value="${r.comboSell||''}" onchange="setRec('comboSell',this.value)"></label>
+      <label class="f">ລາຄາແກ້ວ L ₭<input type="number" style="width:120px" value="${r.sellL||''}" onchange="setRec('sellL',this.value)"></label>
+      <label class="f">Q factor ສະເພາະສູດ %<input type="number" style="width:130px" placeholder="${Math.round(qf()*100)}" value="${r.qf!=null?Math.round(r.qf*1000)/10:''}" onchange="setRecQ(this.value)"></label>
+    </div>`:`<div class="row" style="margin:12px 0">
+      <div><div class="l small">1 ຊຸດ ໄດ້</div><b>${fmt(r.yield)} ຈອກ</b></div>
+      <div><div class="l small">ລາຄາຂາຍ</div><b>${r.sell?K(r.sell)+' ₭':'—'}</b></div>
+    </div>`}
+    <h3 style="margin-bottom:6px">ສ່ວນປະສົມ ຕໍ່ 1 ຊຸດ</h3>
+    <table><thead><tr>${head}</tr></thead><tbody>${lineRows('lines')}</tbody></table>
+    ${A?`<button class="btn sm ghost" style="margin-top:8px" onclick="addLine('lines')">+ ເພີ່ມສ່ວນປະສົມ</button>`:''}
+    <h3 style="margin:16px 0 6px">ທັອບປິ້ງຄອມໂບ (ຕໍ່ຈອກ)</h3>
+    <table><thead><tr>${head}</tr></thead><tbody>${lineRows('combo')}</tbody></table>
+    ${A?`<button class="btn sm ghost" style="margin-top:8px" onclick="addLine('combo')">+ ເພີ່ມທັອບປິ້ງ</button>`:''}
+    <div class="card" id="rec-sum" style="margin-top:16px;background:var(--panel2)">
+      <div class="row">
+        <div><div class="l small">ປະລິມານຕໍ່ຊຸດ</div><b>${fmt(bv)} ກຣາມ</b></div>
+        <div><div class="l small">ຕໍ່ຈອກ</div><b>${fmt(bv/(+r.yield||1))} ກຣາມ</b></div>
+        ${A?`<div><div class="l small">ຕົ້ນທຶນຕໍ່ຊຸດ (ລວມ ${pc(qf())})</div><b>${K(bc)} ₭</b></div>
+        <div><div class="l small">ຕົ້ນທຶນຕໍ່ກຣາມ</div><b>${costPerG(id).toFixed(2)} ₭</b></div>
+        <div><div class="l small">ຕົ້ນທຶນຕໍ່ຈອກ</div><b>${K(r.sell?cupCost(id):bc/(+r.yield||1))} ₭</b></div>
+        ${r.sell?`<div><div class="l small">ຕົ້ນທຶນ %</div><b>${pc(cupCost(id)/r.sell)}</b></div>`:''}`:''}
+      </div>
+    </div>
+    ${A?`<div class="row" style="margin-top:14px"><button class="btn danger sm" onclick="delRec()">ລຶບເມນູນີ້</button></div>`:''}`;
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('on'); renderAll(); }
+function setRecQ(v){
+  if(!isAdmin()) return;
+  const r=R(curRec); if(!r) return;
+  r.qf = (v===''||v===null)?null:(+v||0)/100;
+  touch(); refreshRecSummary();
+}
+function setRec(f,v){
+  if(!isAdmin()) return;
+  const r=R(curRec); if(!r) return;
+  if(f==='name') r.name=v; else r[f]= v===''?null:+v;
+  touch(); refreshRecSummary();
+}
+function refreshRecSummary(){
+  const r=R(curRec); if(!r||!isAdmin()) return;
+  const box=document.getElementById('rec-sum'); if(!box) return;
+  const bv=batchVol(curRec), bc=recipeCost(curRec);
+  box.innerHTML=`<div class="row">
+      <div><div class="l small">ປະລິມານຕໍ່ຊຸດ</div><b>${fmt(bv)} g</b></div>
+      <div><div class="l small">ຕົ້ນທຶນຕໍ່ຊຸດ (ລວມ ${pc(qfOf(curRec))})</div><b>${K(bc)} ₭</b></div>
+      <div><div class="l small">ຕົ້ນທຶນຕໍ່ກຣາມ</div><b>${costPerG(curRec).toFixed(2)} ₭</b></div>
+      <div><div class="l small">ຕົ້ນທຶນຕໍ່ຈອກ</div><b>${K(r.sell?cupCost(curRec):bc/(+r.yield||1))} ₭</b></div>
+      ${r.sell?`<div><div class="l small">ຕົ້ນທຶນ %</div><b>${pc(cupCost(curRec)/r.sell)}</b></div>`:''}
+      ${r.comboSell?`<div><div class="l small">ຕົ້ນທຶນຄອມໂບ %</div><b>${pc(cupCost(curRec+'|C')/r.comboSell)}</b></div>`:''}
+    </div>
+    <div class="hint" style="margin-top:8px">1 ຊຸດ ໄດ້ ${fmt(bv)} ກຣາມ. ຖ້າໄດ້ ${fmt(r.yield)} ຈອກ ແປວ່າ ຈອກລະ ${fmt(bv/(+r.yield||1))} ກຣາມ.</div>`;
+  const t=document.getElementById('rec-title'); if(t) t.textContent=r.name;
+}
+function setLine(coll,ix,f,v){
+  if(!isAdmin()) return;
+  const r=R(curRec); const l=r[coll][ix];
+  if(f==='ref'){ const [t,id]=v.split(':'); l.t=t; l.ref=id; }
+  else l.g=+v||0;
+  touch();
+  const unit=l.t==='I'?cpg(I(l.ref)):costPerG(l.ref);
+  const u=document.getElementById(`u-${coll}-${ix}`), c=document.getElementById(`lc-${coll}-${ix}`);
+  if(u) u.textContent=unit.toFixed(2);
+  if(c) c.textContent=K(unit*l.g);
+  refreshRecSummary();
+}
+function addLine(coll){
+  const r=R(curRec); r[coll]=r[coll]||[];
+  r[coll].push({name:'',g:0,t:'I',ref:S.ings[0].id}); touch(); openRec(curRec);
+}
+function delLine(coll,ix){ const r=R(curRec); r[coll].splice(ix,1); touch(); openRec(curRec); }
+function addRecipe(){
+  if(!isAdmin()) return;
+  const r={id:uid('R'),name:'ເມນູໃໝ່',yield:1,lines:[],combo:[],sell:null,comboSell:null};
+  S.recipes.push(r); reindex(); touch(); openRec(r.id);
+}
+function delRec(){
+  if(!isAdmin()) return;
+  const used=S.recipes.some(r=>[...(r.lines||[]),...(r.combo||[])].some(l=>l.t==='R'&&l.ref===curRec));
+  if(used){ toast('ເບສນີ້ຖືກໃຊ້ຢູ່ໃນເມນູອື່ນ — ໃຫ້ລຶບອອກຈາກເມນູນັ້ນກ່ອນ'); return; }
+  if(!confirm('ລຶບເມນູນີ້ບໍ?')) return;
+  S.recipes=S.recipes.filter(x=>x.id!==curRec); reindex(); touch(); closeModal();
+}
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('modal').classList.contains('on')) closeModal(); });
+
+/* ================= BOOT ================= */
+document.getElementById('ver').textContent=VER;
+loadLocal(); loadCfg(); buildNav();
+if(!Object.keys(S.plan||{}).length && !Object.keys(S.stock||{}).length) loadDemo(false);
+renderAll();
+if(!initFB()) showGate();
+
+</script>
+</body>
+</html>
